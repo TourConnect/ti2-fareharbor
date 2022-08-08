@@ -1,0 +1,172 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`search tests utilities & data translators translators translateAvail 1`] = `
+Object {
+  "allDay": false,
+  "available": true,
+  "dateTimeEnd": "2022-08-18T15:30:00+1000",
+  "dateTimeStart": "2022-08-18T15:30:00+1000",
+  "key": null,
+  "offer": null,
+  "pricing": Object {
+    "currencyPrecision": 2,
+    "net": 2500,
+    "original": 2500,
+    "retail": 2500,
+    "unitId": "75993",
+  },
+  "unitPricing": Array [
+    Object {
+      "currencyPrecision": 2,
+      "net": 3500,
+      "original": 3500,
+      "retail": 3500,
+      "unitId": "75992",
+    },
+    Object {
+      "currencyPrecision": 2,
+      "net": 2500,
+      "original": 2500,
+      "retail": 2500,
+      "unitId": "75993",
+    },
+    Object {
+      "currencyPrecision": 2,
+      "net": 2500,
+      "original": 2500,
+      "retail": 2500,
+      "unitId": "76013",
+    },
+  ],
+  "vacancies": 35,
+}
+`;
+
+exports[`search tests utilities & data translators translators translateBooking 1`] = `
+Object {
+  "allDay": false,
+  "bookingDate": null,
+  "bookingId": "4509eb05-79cb-405d-8aba-e1d0edaef309",
+  "cancelPolicy": "hours-before-start",
+  "cancellable": true,
+  "end": "2022-08-18T12:00:00+1000",
+  "holder": Object {
+    "emailAddress": null,
+    "fullName": null,
+    "name": "y y",
+    "phoneNumber": null,
+    "surname": null,
+  },
+  "id": "4509eb05-79cb-405d-8aba-e1d0edaef309",
+  "notes": "",
+  "optionId": "32439",
+  "optionName": "Daily Cruise Tour",
+  "orderId": "#344488",
+  "price": Object {
+    "currencyPrecision": 2,
+    "net": null,
+    "original": 3500,
+    "retail": 3500,
+  },
+  "productId": "32439",
+  "productName": "Daily Cruise Tour",
+  "start": "2022-08-18T12:00:00+1000",
+  "status": "Booked",
+  "supplierBookingId": "#344488",
+  "unitItems": Array [
+    Object {
+      "unitId": null,
+      "unitItemId": null,
+      "unitName": null,
+    },
+  ],
+}
+`;
+
+exports[`search tests utilities & data translators translators translateProduct 1`] = `
+Object {
+  "availableCurrencies": Array [],
+  "defaultCurrency": null,
+  "options": Array [
+    Object {
+      "optionId": "default",
+      "optionName": "Daily Cruise Tour",
+      "units": Array [
+        Object {
+          "pricing": Array [
+            Object {
+              "currency": null,
+              "currencyPrecision": 2,
+              "original": 3500,
+              "retail": 3500,
+            },
+          ],
+          "restrictions": Object {
+            "maxAge": 59,
+            "minAge": 18,
+            "paxCount": 1,
+          },
+          "subtitle": "18+",
+          "unitId": "75992",
+          "unitName": "Adult",
+        },
+        Object {
+          "pricing": Array [
+            Object {
+              "currency": null,
+              "currencyPrecision": 2,
+              "original": 2500,
+              "retail": 2500,
+            },
+          ],
+          "restrictions": Object {
+            "maxAge": 17,
+            "minAge": 0,
+            "paxCount": 1,
+          },
+          "subtitle": "0-17 yrs",
+          "unitId": "75993",
+          "unitName": "Child",
+        },
+        Object {
+          "pricing": Array [
+            Object {
+              "currency": null,
+              "currencyPrecision": 2,
+              "original": 2500,
+              "retail": 2500,
+            },
+          ],
+          "restrictions": Object {
+            "maxAge": 99,
+            "minAge": 60,
+            "paxCount": 1,
+          },
+          "subtitle": "60+",
+          "unitId": "76013",
+          "unitName": "Senior",
+        },
+      ],
+    },
+  ],
+  "productId": "32439",
+  "productName": "Daily Cruise Tour",
+}
+`;
+
+exports[`search tests utilities & data translators translators translateRate 1`] = `
+Object {
+  "pricing": Array [
+    Object {
+      "currency": null,
+      "currencyPrecision": 2,
+      "original": null,
+      "retail": null,
+    },
+  ],
+  "rateId": "75992",
+  "rateName": "adult",
+  "unitId": "75992",
+  "unitName": "Adult",
+}
+`;
