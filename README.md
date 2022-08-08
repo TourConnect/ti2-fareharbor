@@ -6,11 +6,9 @@
 
 Some environment variables are required for this plugin to run it's tests
 
-- apiKey
-- octoEnv
+- userKey
 - endpoint
-- acceptLanguage
-- jwtKey
+- appKey
 
 ## Contributing
 
