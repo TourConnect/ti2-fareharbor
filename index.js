@@ -120,7 +120,6 @@ class Plugin {
         .options.filter(({ optionId }) => optionId === optionIds[productIdIx])[0];
       quote[productIdIx] = await Promise.map(
         pickUnit(optionDetail.units, occupancies[productIdIx]), e => {
-          console.log({ rawRate: e });
           return translateRate({ rootValue: e });
         });
     });
@@ -262,6 +261,7 @@ class Plugin {
       notes,
       reference,
       holder,
+      rebookingId,
     },
   }) {
     try {
@@ -278,13 +278,13 @@ class Plugin {
       method: 'post',
       url: `${endpoint || this.endpoint}/availabilities/${data.availabilityId}/bookings/`,
       data: {
-        note: notes,
+        rebooking: rebookingId,
+        note: `${notes || ''}${reference ? `\n[Reseller Ref: ${reference} :end]` : ''}`,
         contact: {
           name: `${holder.name || ''} ${holder.surname || ''}`.trim(),
           email: holder.emailAddress,
           phone: holder.phone,
         },
-        external_id: reference,
         customers: data.customers,
       },
       headers,

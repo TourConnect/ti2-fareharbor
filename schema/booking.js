@@ -20,6 +20,7 @@ const typeDefs = `
     retail: Int
     net: Int
     currencyPrecision: Int
+    currency: String
   }
   type Query {
     id: ID
@@ -32,6 +33,7 @@ const typeDefs = `
     optionId: String
     optionName: String
     cancellable: Boolean
+    editable: Boolean
     unitItems: [UnitItem]
     start: String
     end: String
@@ -41,6 +43,7 @@ const typeDefs = `
     notes: String
     price: Price
     cancelPolicy: String
+    resellerReference: String
   }
 `;
 
@@ -55,6 +58,7 @@ const query = `{
   optionId
   optionName
   cancellable
+  editable
   unitItems {
     unitItemId
     unitId
@@ -77,8 +81,11 @@ const query = `{
     retail
     net
     currencyPrecision
+    currency
   }
   cancelPolicy
+  optionId
+  resellerReference
 }`;
 
 const capitalize = sParam => {
@@ -95,19 +102,39 @@ const resolvers = {
     status: e => capitalize(R.path(['status'], e)),
     productId: R.path(['availability', 'item', 'pk']),
     productName: R.path(['availability', 'item', 'name']),
-    optionId: R.path(['availability', 'item', 'pk']),
-    optionName: R.path(['availability', 'item', 'name']),
     cancellable: root => {
-      if (root.status === 'cancelled') return false;
+      if (root.status.toLowerCase() === 'cancelled') return false;
+      if (root.status.toLowerCase() === 'rebooked') return false;
       return R.prop('is_eligible_for_cancellation', root);
     },
-    unitItems: ({ customers }) => customers,
+    editable: root => {
+      if (root.status.toLowerCase() === 'cancelled') return false;
+      if (root.status.toLowerCase() === 'rebooked') return false;
+      return true;
+    },
+    unitItems: ({ customers }) => customers.map(customer => ({
+      unitItemId: customer.pk,
+      unitId: R.path(['customer_type_rate', 'customer_prototype', 'pk'], customer),
+      unitName: R.path(['customer_type_rate', 'customer_prototype', 'display_name'], customer),
+    })),
     start: R.path(['availability', 'start_at']),
     end: R.path(['availability', 'end_at']),
     allDay: () => false,
     bookingDate: R.path(['utcCreatedAt']),
-    holder: R.path(['contact']),
-    notes: R.path(['note']),
+    holder: root => ({
+      name: R.path(['contact', 'name'], root).split(' ')[0],
+      surname: R.last(R.path(['contact', 'name'], root).split(' ')),
+      fullName: R.path(['contact', 'name'], root),
+      phoneNumber: R.path(['contact', 'phone'], root),
+      emailAddress: R.path(['contact', 'email'], root),
+    }),
+    notes: root => {
+      const note = root.note || '';
+      if (note.indexOf('[Reseller Ref:') === -1) return note;
+      const beforeRef = note.split('[Reseller Ref:')[0];
+      const afterRef = R.last(note.split(':end]'));
+      return `${beforeRef || ''} ${afterRef || ''}`.trim();
+    },
     price: root => ({
       original: R.path(['receipt_total'], root),
       retail: R.path(['receipt_total'], root),
@@ -115,6 +142,18 @@ const resolvers = {
       currency: R.path(['company', 'currency'], root),
     }),
     cancelPolicy: R.path(['effective_cancellation_policy', 'type']),
+    optionId: () => 'default',
+    optionName: R.path(['availability', 'item', 'name']),
+    resellerReference: root => {
+      const note = root.note || '';
+      if (note.indexOf('[Reseller Ref:') === -1) return '';
+      return R.call(R.compose(
+        R.head,
+        R.split(':end]'),
+        R.last,
+        R.split('[Reseller Ref:'),
+      ), note)
+    }
   },
 };
 

@@ -77,12 +77,12 @@ const resolvers = {
         optionId,
         availabilityId: root.pk,
         currency,
-        customers: unitsWithQuantity.map(u => {
+        customers: R.chain(u => {
           const foundCustomerTypeRate = root.customer_type_rates.find(c => `${R.path(['customer_prototype', 'pk'], c)}` === `${u.unitId}`) || {};
-          return {
+          return new Array(u.quantity).fill(1).map(() => ({
             customer_type_rate: foundCustomerTypeRate.pk,
-          };
-        }).filter(c => c.customer_type_rate),
+          }));
+        }, unitsWithQuantity).filter(c => c.customer_type_rate),
       }), jwtKey);
     },
     dateTimeStart: root => R.path(['start_at'], root),

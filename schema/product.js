@@ -91,7 +91,10 @@ const resolvers = {
     }],
     restrictions: unit => {
       const retVal = { paxCount: 1 };
-      if (unit.note) {
+      if (unit.note.indexOf('All ages') > -1) {
+        retVal.minAge = 0;
+        retVal.maxAge = 99;
+      } else if (unit.note) {
         // note could be: 18+, 1-17 yrs, 60+
         if (unit.note === '18+') {
           retVal.minAge = 18;
@@ -106,6 +109,8 @@ const resolvers = {
           retVal.maxAge = unit.note.split('-')[1].replace(' yrs', '');
         }
       }
+      if (isNaN(retVal.minAge)) retVal.minAge = 0;
+      if (isNaN(retVal.maxAge)) retVal.maxAge = 99;
       return retVal;
     },
   },
