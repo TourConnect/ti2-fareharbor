@@ -17,8 +17,8 @@ jobs:
       - run: npm test
         env:
           ti2_fareharbor_endpoint: 'https://demo.fareharbor.com/api/external/v1/companies/discoversydneycruises-api-testing'
-          ti2_fareharbor_appKey: ${{ secrets.FAREHARBOR_APIKEY }}
-          ti2_fareharbor_userKey: ${{ secrets.FAREHARBOR_APIKEY }}
+          ti2_fareharbor_appKey: ${{ secrets.FAREHARBOR_APPKEY }}
+          ti2_fareharbor_userKey: ${{ secrets.FAREHARBOR_USERKEY }}
           ti2_fareharbor_jwtKey: 'Reliance-Overload4-Lyrics'
   tag:
     if: github.ref == 'refs/heads/main'
