@@ -2,66 +2,6 @@ const { makeExecutableSchema } = require('@graphql-tools/schema');
 const R = require('ramda');
 const { graphql } = require('graphql');
 
-const typeDefs = `
-  type Restriction {
-    paxCount: Int
-    minAge: Int
-    maxAge: Int
-  }
-  type Pricing {
-    original: Int
-    retail: Int
-    currency: Int
-    currencyPrecision: Int
-  }
-  type Unit {
-    unitId: ID
-    unitName: String
-    subtitle: String!
-    restrictions: Restriction
-    pricing: [Pricing]
-  }
-  type Option {
-    optionId: ID
-    optionName: String
-    units: [Unit]
-  }
-  type Query {
-    productId: ID
-    productName: String
-    availableCurrencies: [String]
-    defaultCurrency: String
-    options: [Option]
-  }
-`;
-
-const query = `{
-  productId
-  productName
-  availableCurrencies
-  defaultCurrency
-  options {
-    optionId
-    optionName
-    units {
-      unitId
-      unitName
-      subtitle
-      pricing {
-        original
-        retail
-        currencyPrecision
-        currency
-      }
-      restrictions {
-        paxCount
-        minAge
-        maxAge
-      }
-    }
-  }
-}`;
-
 const resolvers = {
   Query: {
     productId: R.path(['pk']),
@@ -116,12 +56,15 @@ const resolvers = {
   },
 };
 
-const schema = makeExecutableSchema({
+const translateProduct = async ({
+  rootValue,
   typeDefs,
-  resolvers,
-});
-
-const translateProduct = async ({ rootValue }) => {
+  query,
+}) => {
+  const schema = makeExecutableSchema({
+    typeDefs,
+    resolvers,
+  });
   const retVal = await graphql({
     schema,
     rootValue,
