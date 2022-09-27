@@ -182,13 +182,10 @@ class Plugin {
     const availabilityByProduct = await Promise.map(productIds, async (productId, idx) => {
       return Promise.map(
         avail.filter(o => {
-          return o.customer_type_rates.every(c => {
-            const foundRequiredQuantity = (
-              unitsWithQuantity[0].find(u => `${u.unitId}` === `${R.path(['customer_prototype', 'pk'], c)}`)
-              || {}
-            ).quantity || 1;
-            return c.capacity >= foundRequiredQuantity;
-          })
+          return unitsWithQuantity[0].every(u => {
+            const foundCus = o.customer_type_rates.find(c => `${u.unitId}` === `${R.path(['customer_prototype', 'pk'], c)}`);
+            return foundCus && foundCus.capacity >= u.quantity
+          });
         }),
         async obj => {
           return translateAvailability({
