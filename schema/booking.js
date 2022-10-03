@@ -44,6 +44,8 @@ const typeDefs = `
     price: Price
     cancelPolicy: String
     resellerReference: String
+    publicUrl: String
+    privateUrl: String
   }
 `;
 
@@ -86,6 +88,8 @@ const query = `{
   cancelPolicy
   optionId
   resellerReference
+  publicUrl
+  privateUrl
 }`;
 
 const capitalize = sParam => {
@@ -153,7 +157,9 @@ const resolvers = {
         R.last,
         R.split('[Reseller Ref:'),
       ), note)
-    }
+    },
+    publicUrl: R.prop('confirmation_url'),
+    privateUrl: R.prop('dashboard_url'),
   },
 };
 
