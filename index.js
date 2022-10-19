@@ -31,6 +31,31 @@ class Plugin {
     });
   }
 
+  async validateToken({
+    token: {
+      userKey,
+      appKey,
+      endpoint,
+    }
+  }) {
+    let url = `${endpoint || this.endpoint}/companies/`;
+    try {
+      const headers = getHeaders({
+        userKey,
+        appKey,
+      });
+      const companies = R.path(['data', 'companies'], await axios({
+        method: 'get',
+        url,
+        headers,
+      }));
+      return Array.isArray(companies) && companies.length > 0;
+      return false;
+    } catch (err) {
+      return false;
+    }
+  }
+
   async searchProducts({
     token: {
       userKey,

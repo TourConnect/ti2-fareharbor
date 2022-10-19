@@ -53,6 +53,20 @@ describe('search tests', () => {
       });
       it.todo('family + one');
     });
+    describe('validateToken', () => {
+      it('valid token', async () => {
+        const retVal = await app.validateToken({
+          token,
+        });
+        expect(retVal).toBeTruthy();
+      });
+      it('invalid token', async () => {
+        const retVal = await app.validateToken({
+          token: { ...token, userKey: 'somerandom' },
+        });
+        expect(retVal).toBeFalsy();
+      });
+    });
     describe('translators', () => {
       it('translateProduct', async () => {
         const translated = await translateProduct({ rootValue: rawProduct });
