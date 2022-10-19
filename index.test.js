@@ -273,7 +273,7 @@ describe('search tests', () => {
       expect(Array.isArray(retVal.bookings)).toBeTruthy();
       ({ bookings } = retVal);
       expect(R.path([0, 'id'], bookings)).toBeTruthy();
-    });
+    }, 30e3);
     it.skip('it should be able to search bookings by reference', async () => {
       const retVal = await app.searchBooking({
         token,
