@@ -38,7 +38,9 @@ class Plugin {
       endpoint,
     }
   }) {
-    let url = `${endpoint || this.endpoint}/companies/`;
+    let url = (endpoint || this.endpoint)
+      .split('/companies/')[0]
+    url = `${url}/companies/`;
     try {
       const headers = getHeaders({
         userKey,
@@ -49,7 +51,7 @@ class Plugin {
         url,
         headers,
       }));
-      return Array.isArray(companies);
+      return Array.isArray(companies) && companies.length > 0;
       return false;
     } catch (err) {
       return false;
