@@ -67,6 +67,32 @@ describe('search tests', () => {
         expect(retVal).toBeFalsy();
       });
     });
+    describe('template', () => {
+      let template;
+      it('get the template', async () => {
+        template = await app.tokenTemplate();
+        const rules = Object.keys(template);
+        expect(rules).toContain('userKey');
+        expect(rules).toContain('endpoint');
+        expect(rules).toContain('appKey');
+      });
+      it('appKey', () => {
+        const appKey = template.appKey.regExp;
+        expect(appKey.test('something')).toBeFalsy();
+        expect(appKey.test('f5eb2e1f-4b8f-4b43-a858-4a12d77b8299')).toBeTruthy();
+      });
+      it('userKey', () => {
+        const userKey = template.userKey.regExp;
+        expect(userKey.test('something')).toBeFalsy();
+        expect(userKey.test('f5eb2e1f-4b8f-4b43-a858-4a12d77b8299')).toBeTruthy();
+      });
+      it('endpoint', () => {
+        const endpoint = template.endpoint.regExp;
+        expect(endpoint.test('something')).toBeFalsy();
+        expect(endpoint.test('https://www.yahoo.com')).toBeTruthy();
+        expect(endpoint.test('https://demo.fareharbor.com/api/external/v1/companies/fhcabtours-aud')).toBeTruthy();
+      });
+    });
     describe('translators', () => {
       it('translateProduct', async () => {
         const translated = await translateProduct({ rootValue: rawProduct });
@@ -247,7 +273,7 @@ describe('search tests', () => {
       expect(Array.isArray(retVal.bookings)).toBeTruthy();
       ({ bookings } = retVal);
       expect(R.path([0, 'id'], bookings)).toBeTruthy();
-    });
+    }, 30e3);
     it.skip('it should be able to search bookings by reference', async () => {
       const retVal = await app.searchBooking({
         token,
