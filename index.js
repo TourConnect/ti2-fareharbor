@@ -49,7 +49,7 @@ class Plugin {
         url,
         headers,
       }));
-      return Array.isArray(companies) && companies.length > 0;
+      return Array.isArray(companies);
       return false;
     } catch (err) {
       return false;
