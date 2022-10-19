@@ -19,8 +19,8 @@ const getHeaders = ({
   userKey,
   appKey,
 }) => ({
-  'X-FareHarbor-API-User': userKey,
-  'X-FareHarbor-API-App': appKey,
+  ...userKey ? { 'X-FareHarbor-API-User': userKey }: {},
+  ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
 });
 
