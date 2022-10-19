@@ -19,8 +19,8 @@ const getHeaders = ({
   userKey,
   appKey,
 }) => ({
-  'X-FareHarbor-API-User': userKey,
-  'X-FareHarbor-API-App': appKey,
+  ...userKey ? { 'X-FareHarbor-API-User': userKey }: {},
+  ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
 });
 
@@ -29,6 +29,33 @@ class Plugin {
     Object.entries(params).forEach(([attr, value]) => {
       this[attr] = value;
     });
+  }
+
+  async validateToken({
+    token: {
+      userKey,
+      appKey,
+      endpoint,
+    }
+  }) {
+    let url = (endpoint || this.endpoint)
+      .split('/companies/')[0]
+    url = `${url}/companies/`;
+    try {
+      const headers = getHeaders({
+        userKey,
+        appKey,
+      });
+      const companies = R.path(['data', 'companies'], await axios({
+        method: 'get',
+        url,
+        headers,
+      }));
+      return Array.isArray(companies) && companies.length > 0;
+      return false;
+    } catch (err) {
+      return false;
+    }
   }
 
   async searchProducts({
