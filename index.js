@@ -310,7 +310,7 @@ class Plugin {
       assert(availabilityKey, 'an availability code is required !');
     assert(R.path(['name'], holder), 'a holder\' first name is required');
     assert(R.path(['surname'], holder), 'a holder\' surname is required');
-    assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
+    // assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
     const headers = getHeaders({
       userKey,
       appKey,
