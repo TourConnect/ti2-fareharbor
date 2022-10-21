@@ -6,8 +6,8 @@ const moment = require('moment');
 const jwt = require('jsonwebtoken');
 const wildcardMatch = require('./utils/wildcardMatch');
 
-const { translateProduct, resolvers: productResolvers } = require('./schema/product');
-const { translateAvailability, resolvers: availResolvers } = require('./schema/availability');
+const { translateProduct } = require('./schema/product');
+const { translateAvailability } = require('./schema/availability');
 const { translateBooking } = require('./schema/booking');
 const { translateRate } = require('./schema/rate');
 
@@ -19,8 +19,8 @@ const getHeaders = ({
   userKey,
   appKey,
 }) => ({
-  'X-FareHarbor-API-User': userKey,
-  'X-FareHarbor-API-App': appKey,
+  ...userKey ? { 'X-FareHarbor-API-User': userKey }: {},
+  ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
 });
 
@@ -29,8 +29,51 @@ class Plugin {
     Object.entries(params).forEach(([attr, value]) => {
       this[attr] = value;
     });
-    this.availResolvers = availResolvers;
-    this.productResolvers = productResolvers;
+    this.tokenTemplate = () => ({
+      appKey: {
+        type: 'text',
+        regExp: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+        description: 'the App Key provided to the ti2 host from FareHarbor',
+      },
+      userKey: {
+        type: 'text',
+        regExp: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+        description: 'the User Key provided by FareHarbor to identify the user',
+      },
+      endpoint: {
+        type: 'text',
+        regExp: /^(?!mailto:)(?:(?:http|https|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))|localhost)(?::\d{2,5})?(?:(\/|\?|#)[^\s]*)?$/i,
+        default: 'https://fareharbor.com/api/external/v1/companies/COMPANY-CODE',
+        description: 'The url api endpoint from FareHarbor and must include the company shortname (replace COMPANYCODE).',
+      },
+    });
+  }
+
+  async validateToken({
+    token: {
+      userKey,
+      appKey,
+      endpoint,
+    }
+  }) {
+    let url = (endpoint || this.endpoint)
+      .split('/companies/')[0]
+    url = `${url}/companies/`;
+    try {
+      const headers = getHeaders({
+        userKey,
+        appKey,
+      });
+      const companies = R.path(['data', 'companies'], await axios({
+        method: 'get',
+        url,
+        headers,
+      }));
+      return Array.isArray(companies) && companies.length > 0;
+      return false;
+    } catch (err) {
+      return false;
+    }
   }
 
   async searchProducts({
@@ -213,13 +256,10 @@ class Plugin {
     const availabilityByProduct = await Promise.map(productIds, async (productId, idx) => {
       return Promise.map(
         avail.filter(o => {
-          return o.customer_type_rates.every(c => {
-            const foundRequiredQuantity = (
-              unitsWithQuantity[0].find(u => `${u.unitId}` === `${R.path(['customer_prototype', 'pk'], c)}`)
-              || {}
-            ).quantity || 1;
-            return c.capacity >= foundRequiredQuantity;
-          })
+          return unitsWithQuantity[0].every(u => {
+            const foundCus = o.customer_type_rates.find(c => `${u.unitId}` === `${R.path(['customer_prototype', 'pk'], c)}`);
+            return foundCus && foundCus.capacity >= u.quantity
+          });
         }),
         async obj => {
           return translateAvailability({
@@ -311,7 +351,7 @@ class Plugin {
       assert(availabilityKey, 'an availability code is required !');
     assert(R.path(['name'], holder), 'a holder\' first name is required');
     assert(R.path(['surname'], holder), 'a holder\' surname is required');
-    assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
+    // assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
     const headers = getHeaders({
       userKey,
       appKey,

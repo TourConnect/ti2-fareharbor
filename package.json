@@ -1,6 +1,6 @@
 {
   "name": "ti2-fareharbor",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Fareharbor's TI2 Plugin",
   "main": "index.js",
   "scripts": {
@@ -42,6 +42,7 @@
     "faker": "^5.5.3",
     "jest": "^27.5.1",
     "jest-cli": "^27.4.7",
-    "jest-diff": "^27.4.2"
+    "jest-diff": "^27.4.2",
+    "ti2": "file:../ti2"
   }
 }

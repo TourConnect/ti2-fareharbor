@@ -67,7 +67,9 @@ const resolvers = {
         R.last,
         R.split('[Reseller Ref:'),
       ), note)
-    }
+    },
+    publicUrl: R.prop('confirmation_url'),
+    privateUrl: R.prop('dashboard_url'),
   },
 };
 
