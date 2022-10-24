@@ -6,10 +6,10 @@ const moment = require('moment');
 const jwt = require('jsonwebtoken');
 const wildcardMatch = require('./utils/wildcardMatch');
 
-const { translateProduct } = require('./schema/product');
-const { translateAvailability } = require('./schema/availability');
-const { translateBooking } = require('./schema/booking');
-const { translateRate } = require('./schema/rate');
+const { translateProduct } = require('./resolvers/product');
+const { translateAvailability } = require('./resolvers/availability');
+const { translateBooking } = require('./resolvers/booking');
+const { translateRate } = require('./resolvers/rate');
 
 const CONCURRENCY = 3; // is this ok ?
 
