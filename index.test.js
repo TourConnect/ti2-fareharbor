@@ -2,17 +2,31 @@
 const R = require('ramda');
 const moment = require('moment');
 const faker = require('faker');
+const { typeDefs: productTypeDefs, query: productQuery } = require('./node_modules/ti2/controllers/graphql-schemas/product');
+const { typeDefs: availTypeDefs, query: availQuery } = require('./node_modules/ti2/controllers/graphql-schemas/availability');
+const { typeDefs: bookingTypeDefs, query: bookingQuery } = require('./node_modules/ti2/controllers/graphql-schemas/booking');
+const { typeDefs: rateTypeDefs, query: rateQuery } = require('./node_modules/ti2/controllers/graphql-schemas/rate');
 
+const typeDefsAndQueries = {
+  productTypeDefs,
+  productQuery,
+  availTypeDefs,
+  availQuery,
+  bookingTypeDefs,
+  bookingQuery,
+  rateTypeDefs,
+  rateQuery,
+};
 const Plugin = require('./index');
 const rawUnits = require('./__fixtures__/raw-units.js');
 const rawProduct = require('./__fixtures__/raw-product');
 const rawAvail = require('./__fixtures__/raw-availability');
 const rawBooking = require('./__fixtures__/raw-booking');
 
-const { translateProduct } = require('./schema/product');
-const { translateAvailability } = require('./schema/availability');
-const { translateBooking } = require('./schema/booking');
-const { translateRate } = require('./schema/rate');
+const { translateProduct } = require('./resolvers/product');
+const { translateAvailability } = require('./resolvers/availability');
+const { translateBooking } = require('./resolvers/booking');
+const { translateRate } = require('./resolvers/rate');
 
 const app = new Plugin({
   jwtKey: process.env.ti2_fareharbor_jwtKey,
@@ -95,24 +109,34 @@ describe('search tests', () => {
     });
     describe('translators', () => {
       it('translateProduct', async () => {
-        const translated = await translateProduct({ rootValue: rawProduct });
+        const translated = await translateProduct({
+          rootValue: rawProduct,
+          typeDefs: productTypeDefs,
+          query: productQuery,
+        });
         expect(translated).toMatchSnapshot();
       });
       it('translateAvail', async () => {
         const translated = await translateAvailability({
           rootValue: rawAvail,
+          typeDefs: availTypeDefs,
+          query: availQuery,
         });
         expect(translated).toMatchSnapshot();
       });
       it('translateBooking', async () => {
         const translated = await translateBooking({
           rootValue: rawBooking,
+          typeDefs: bookingTypeDefs,
+          query: bookingQuery,
         });
         expect(translated).toMatchSnapshot();
       });
       it('translateRate', async () => {
         const translated = await translateRate({
           rootValue: rawUnits[0],
+          typeDefs: rateTypeDefs,
+          query: rateQuery,
         });
         expect(translated).toMatchSnapshot();
       });
@@ -122,6 +146,7 @@ describe('search tests', () => {
     it('get for all products, a test product should exist', async () => {
       const retVal = await app.searchProducts({
         token,
+        typeDefsAndQueries,
       });
       expect(Array.isArray(retVal.products)).toBeTruthy();
       // console.log(retVal.products.filter(({ productName }) => productName === testProduct.productName));
@@ -136,6 +161,7 @@ describe('search tests', () => {
     it('should be able to get a single product', async () => {
       const retVal = await app.searchProducts({
         token,
+        typeDefsAndQueries,
         payload: {
           productId: testProduct.productId,
         },
@@ -147,6 +173,7 @@ describe('search tests', () => {
     it('should be able to get a product by name', async () => {
       const retVal = await app.searchProducts({
         token,
+        typeDefsAndQueries,
         payload: {
           productName: '*da*',
         },
@@ -158,6 +185,7 @@ describe('search tests', () => {
     it('should be able to get an availability calendar', async () => {
       const retVal = await app.availabilityCalendar({
         token,
+        typeDefsAndQueries,
         payload: {
           startDate: moment().add(6, 'M').format(dateFormat),
           endDate: moment().add(6, 'M').add(2, 'd').format(dateFormat),
@@ -177,6 +205,7 @@ describe('search tests', () => {
     it('should be able to get quotes', async () => {
       const retVal = await app.searchQuote({
         token,
+        typeDefsAndQueries,
         payload: {
           startDate: moment().add(6, 'M').format(dateFormat),
           endDate: moment().add(6, 'M').add(2, 'd').format(dateFormat),
@@ -203,6 +232,7 @@ describe('search tests', () => {
     it('should be able to get availability', async () => {
       const retVal = await app.searchAvailability({
         token,
+        typeDefsAndQueries,
         payload: {
           startDate: moment().add(6, 'M').format(dateFormat),
           endDate: moment().add(6, 'M').add(2, 'd').format(dateFormat),
@@ -227,6 +257,7 @@ describe('search tests', () => {
       const fullName = faker.name.findName().split(' ');
       const retVal = await app.createBooking({
         token,
+        typeDefsAndQueries,
         payload: {
           availabilityKey,
           notes: faker.lorem.paragraph(),
@@ -251,6 +282,7 @@ describe('search tests', () => {
     it('should be able to cancel the booking', async () => {
       const retVal = await app.cancelBooking({
         token,
+        typeDefsAndQueries,
         payload: {
           bookingId: booking.id,
           reason: faker.lorem.paragraph(),
@@ -266,6 +298,7 @@ describe('search tests', () => {
     it('it should be able to search bookings by id', async () => {
       const retVal = await app.searchBooking({
         token,
+        typeDefsAndQueries,
         payload: {
           bookingId: booking.id,
         },
@@ -277,6 +310,7 @@ describe('search tests', () => {
     it.skip('it should be able to search bookings by reference', async () => {
       const retVal = await app.searchBooking({
         token,
+        typeDefsAndQueries,
         payload: {
           bookingId: reference,
         },
@@ -288,6 +322,7 @@ describe('search tests', () => {
     it.skip('it should be able to search bookings by supplierBookingId', async () => {
       const retVal = await app.searchBooking({
         token,
+        typeDefsAndQueries,
         payload: {
           bookingId: booking.supplierBookingId,
         },
@@ -299,6 +334,7 @@ describe('search tests', () => {
     it.skip('it should be able to search bookings by travelDate', async () => {
       const retVal = await app.searchBooking({
         token,
+        typeDefsAndQueries,
         payload: {
           travelDateStart: moment().add(6, 'M').format(dateFormat),
           travelDateEnd: moment().add(6, 'M').add(2, 'd').format(dateFormat),

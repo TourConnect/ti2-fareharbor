@@ -6,10 +6,10 @@ const moment = require('moment');
 const jwt = require('jsonwebtoken');
 const wildcardMatch = require('./utils/wildcardMatch');
 
-const { translateProduct } = require('./schema/product');
-const { translateAvailability } = require('./schema/availability');
-const { translateBooking } = require('./schema/booking');
-const { translateRate } = require('./schema/rate');
+const { translateProduct } = require('./resolvers/product');
+const { translateAvailability } = require('./resolvers/availability');
+const { translateBooking } = require('./resolvers/booking');
+const { translateRate } = require('./resolvers/rate');
 
 const CONCURRENCY = 3; // is this ok ?
 
@@ -83,6 +83,10 @@ class Plugin {
       endpoint,
     },
     payload,
+    typeDefsAndQueries: {
+      productTypeDefs,
+      productQuery,
+    },
   }) {
     let url = `${endpoint || this.endpoint}/items/`;
     const headers = getHeaders({
@@ -104,6 +108,8 @@ class Plugin {
     let products = await Promise.map(results, async product => {
       return translateProduct({
         rootValue: { ...product, company },
+        typeDefs: productTypeDefs,
+        query: productQuery,
       });
     });
     // dynamic extra filtering
@@ -135,6 +141,12 @@ class Plugin {
       optionIds,
       occupancies,
     },
+    typeDefsAndQueries: {
+      productTypeDefs,
+      productQuery,
+      rateTypeDefs,
+      rateQuery,
+    },
   }) {
     assert(occupancies.length > 0, 'there should be at least one occupancy');
     assert(productIds.length === optionIds.length, 'mismatched product/option combinations');
@@ -156,6 +168,8 @@ class Plugin {
     let productsDetail = await Promise.map(R.uniq(productIds), async productId => {
       return translateProduct({
         rootValue: rawProducts.find(p => `${p.pk}` === `${productId}`),
+        typeDefs: productTypeDefs,
+        query: productQuery,
       });
     }, { concurrency: CONCURRENCY });
     productsDetail = R.indexBy(R.prop('productId'), productsDetail);
@@ -165,7 +179,11 @@ class Plugin {
         .options.filter(({ optionId }) => optionId === optionIds[productIdIx])[0];
       quote[productIdIx] = await Promise.map(
         pickUnit(optionDetail.units, occupancies[productIdIx]), e => {
-          return translateRate({ rootValue: e });
+          return translateRate({
+            rootValue: e,
+            typeDefs: rateTypeDefs,
+            query: rateQuery,
+          });
         });
     });
     return { quote };
@@ -176,6 +194,8 @@ class Plugin {
       userKey,
       appKey,
       endpoint,
+      typeDefs,
+      query,
     },
     token,
     payload: {
@@ -187,6 +207,11 @@ class Plugin {
       endDate,
       dateFormat,
       currency,
+    },
+    typeDefsAndQueries,
+    typeDefsAndQueries: {
+      availTypeDefs,
+      availQuery,
     },
   }) {
     assert(this.jwtKey, 'JWT secret should be set');
@@ -213,7 +238,11 @@ class Plugin {
     }));
     if (!unitsWithQuantity && occupancies.length > 0) {
       unitsWithQuantity = await Promise.map(productIds, async (productId, idx) => {
-        const { products: [product] } = await this.searchProducts({ token, payload: { productId } });
+        const { products: [product] } = await this.searchProducts({
+          token,
+          payload: { productId },
+          typeDefsAndQueries,
+        });
         // retVal is an array of units
         const retVal = pickUnit(product.options[0].units, occupancies[idx]);
         return R.values(retVal.reduce((result, item) => {
@@ -234,6 +263,8 @@ class Plugin {
         }),
         async obj => {
           return translateAvailability({
+            typeDefs: availTypeDefs,
+            query: availQuery,
             rootValue: obj,
             variableValues: {
               productId,
@@ -263,6 +294,10 @@ class Plugin {
       endDate,
       dateFormat,
     },
+    typeDefsAndQueries: {
+      availTypeDefs,
+      availQuery,
+    },
   }) {
     assert(
       productIds.length === optionIds.length,
@@ -287,6 +322,8 @@ class Plugin {
       // availabilityKey is not needed for the calendar
       return translateAvailability({
         rootValue: avail,
+        typeDefs: availTypeDefs,
+        query: availQuery,
       });
     });
     return { availability: [availability] };
@@ -304,6 +341,10 @@ class Plugin {
       reference,
       holder,
       rebookingId,
+    },
+    typeDefsAndQueries: {
+      bookingTypeDefs,
+      bookingQuery,
     },
   }) {
     try {
@@ -331,7 +372,13 @@ class Plugin {
       },
       headers,
     }));
-    return ({ booking: await translateBooking({ rootValue: booking }) });
+    return ({
+      booking: await translateBooking({
+        rootValue: booking,
+        typeDefs: bookingTypeDefs,
+        query: bookingQuery,
+      }),
+    });
     } catch (err) {
       // console.log(err);
       throw new Error(err);
@@ -349,6 +396,10 @@ class Plugin {
       id,
       reason,
     },
+    typeDefsAndQueries: {
+      bookingTypeDefs,
+      bookingQuery,
+    },
   }) {
     try {
       assert(!isNilOrEmpty(bookingId) || !isNilOrEmpty(id), 'Invalid booking id');
@@ -362,7 +413,13 @@ class Plugin {
         url,
         headers,
       }));
-      return ({ cancellation: await translateBooking({ rootValue: booking }) });
+      return ({
+        cancellation: await translateBooking({
+          rootValue: booking,
+          typeDefs: bookingTypeDefs,
+          query: bookingQuery,
+        })
+      });
     } catch (err) {
       console.log('cancel', err);
       throw new Error(err);
@@ -384,6 +441,10 @@ class Plugin {
       // travelDateEnd,
       // dateFormat,
     },
+    typeDefsAndQueries: {
+      bookingTypeDefs,
+      bookingQuery,
+    },
   }) {
     try {
       assert(bookingId, 'bookingId is required');
@@ -397,7 +458,11 @@ class Plugin {
       url,
       headers,
     }));
-    return ({ bookings: [await translateBooking({ rootValue: booking })] });
+    return ({ bookings: [await translateBooking({
+      rootValue: booking, 
+      typeDefs: bookingTypeDefs,
+      query: bookingQuery,
+    })] });
     } catch (err) {
       console.log('search', err);
       throw new Error(err);
