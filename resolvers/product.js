@@ -9,15 +9,10 @@ const resolvers = {
     availableCurrencies: obj => R.path(['company', 'currency'], obj) ? [R.path(['company', 'currency'], obj)] : [],
     defaultCurrency: R.path(['company', 'currency']),
     options: item => [{
-      pk: 'default',
-      display_name: R.path(['name'], item),
+      optionId: 'default',
+      optionName: R.path(['name'], item),
       units: R.pathOr([], ['customer_prototypes'], item),
     }],
-  },
-  Option: {
-    optionId: R.path(['pk']),
-    optionName: R.path(['display_name']),
-    units: option => R.pathOr([], ['units'], option),
   },
   Unit: {
     unitId: R.path(['pk']),
