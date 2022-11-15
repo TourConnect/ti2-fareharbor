@@ -29,8 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: sed -i 's/"file:.*"/"latest"/' package.json
       - name: install dependencies
-        run: npm i --omit=dev
+        run: npm i
       - uses: tool3/bump@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
