@@ -32,7 +32,7 @@ jobs:
       - run: sed -i 's/"file:.*"/"latest"/' package.json
       - name: install dependencies
         run: npm i
-        run: git stash
+      - run: git stash
       - uses: tool3/bump@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
