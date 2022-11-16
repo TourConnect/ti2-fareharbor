@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: sed -i 's/"file:.*"/"latest"/' package.json
-      - run: git commit -m "update test dependency"
       - name: install dependencies
         run: npm i
+      - run: git stash
       - uses: tool3/bump@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
