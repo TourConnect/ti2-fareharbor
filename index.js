@@ -16,10 +16,10 @@ const CONCURRENCY = 3; // is this ok ?
 const isNilOrEmpty = R.either(R.isNil, R.isEmpty);
 
 const getHeaders = ({
-  userKey,
+  affiliateKey,
   appKey,
 }) => ({
-  ...userKey ? { 'X-FareHarbor-API-User': userKey }: {},
+  ...affiliateKey ? { 'X-FareHarbor-API-User': affiliateKey }: {},
   ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
 });
@@ -35,7 +35,7 @@ class Plugin {
         regExp: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
         description: 'the App Key provided to the ti2 host from FareHarbor',
       },
-      userKey: {
+      affiliateKey: {
         type: 'text',
         regExp: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
         description: 'the User Key provided by FareHarbor to identify the user',
@@ -51,7 +51,7 @@ class Plugin {
 
   async validateToken({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -61,7 +61,7 @@ class Plugin {
     url = `${url}/companies/`;
     try {
       const headers = getHeaders({
-        userKey,
+        affiliateKey,
         appKey,
       });
       const companies = R.path(['data', 'companies'], await axios({
@@ -78,7 +78,7 @@ class Plugin {
 
   async searchProducts({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint = tokenEndpoint,
     },
@@ -90,7 +90,7 @@ class Plugin {
   }) {
     let url = `${endpoint || tokenEndpoint || this.endpoint}/items/`;
     const headers = getHeaders({
-      userKey,
+      affiliateKey,
       appKey,
     });
     let results = R.pathOr([], ['data', 'items'], await axios({
@@ -132,7 +132,7 @@ class Plugin {
 
   async searchQuote({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -156,7 +156,7 @@ class Plugin {
     assert(occupancies.every(Boolean), 'some invalid occupacies(s)');
     const quote = occupancies.map(() => productIds.map(productId => ({ productId })));
     const headers = getHeaders({
-      userKey,
+      affiliateKey,
       appKey,
     });
     const url = `${endpoint || this.endpoint}/items/`;
@@ -191,7 +191,7 @@ class Plugin {
 
   async searchAvailability({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -225,7 +225,7 @@ class Plugin {
     const localDateEnd = moment(endDate, dateFormat).format('YYYY-MM-DD');
     // obtain the rates
     const headers = getHeaders({
-      userKey,
+      affiliateKey,
       appKey,
     });
     const url = `${endpoint || this.endpoint}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
@@ -281,7 +281,7 @@ class Plugin {
 
   async availabilityCalendar({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -306,7 +306,7 @@ class Plugin {
     const localDateStart = moment(startDate, dateFormat).format('YYYY-MM-DD');
     const localDateEnd = moment(endDate, dateFormat).format('YYYY-MM-DD');
     const headers = getHeaders({
-      userKey,
+      affiliateKey,
       appKey,
       endpoint,
     });
@@ -329,7 +329,7 @@ class Plugin {
 
   async createBooking({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -351,7 +351,7 @@ class Plugin {
     assert(R.path(['surname'], holder), 'a holder\' surname is required');
     // assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
     const headers = getHeaders({
-      userKey,
+      affiliateKey,
       appKey,
     });
     let data = await jwt.verify(availabilityKey, this.jwtKey);
@@ -385,7 +385,7 @@ class Plugin {
 
   async cancelBooking({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -402,7 +402,7 @@ class Plugin {
     try {
       assert(!isNilOrEmpty(bookingId) || !isNilOrEmpty(id), 'Invalid booking id');
       const headers = getHeaders({
-        userKey,
+        affiliateKey,
         appKey,
       });
       const url = `${endpoint || this.endpoint}/bookings/${bookingId || id}/`;
@@ -426,7 +426,7 @@ class Plugin {
 
   async searchBooking({
     token: {
-      userKey,
+      affiliateKey,
       appKey = this.appKey,
       endpoint,
     },
@@ -447,7 +447,7 @@ class Plugin {
     try {
       assert(bookingId, 'bookingId is required');
     const headers = getHeaders({
-      userKey,
+      affiliateKey,
       appKey,
     });
     const url = `${endpoint || this.endpoint}/bookings/${bookingId}/`;
