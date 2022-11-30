@@ -42,7 +42,7 @@ describe('search tests', () => {
   const token = {
     appKey: process.env.ti2_fareharbor_appKey,
     endpoint: process.env.ti2_fareharbor_endpoint,
-    userKey: process.env.ti2_fareharbor_userKey,
+    affiliateKey: process.env.ti2_fareharbor_userKey,
   };
   const dateFormat = 'DD/MM/YYYY';
   beforeAll(async () => {
@@ -76,7 +76,7 @@ describe('search tests', () => {
       });
       it('invalid token', async () => {
         const retVal = await app.validateToken({
-          token: { ...token, userKey: 'somerandom' },
+          token: { ...token, affiliateKey: 'somerandom' },
         });
         expect(retVal).toBeFalsy();
       });
@@ -86,7 +86,7 @@ describe('search tests', () => {
       it('get the template', async () => {
         template = await app.tokenTemplate();
         const rules = Object.keys(template);
-        expect(rules).toContain('userKey');
+        expect(rules).toContain('affiliateKey');
         expect(rules).toContain('endpoint');
         expect(rules).toContain('appKey');
       });
@@ -95,10 +95,10 @@ describe('search tests', () => {
         expect(appKey.test('something')).toBeFalsy();
         expect(appKey.test('f5eb2e1f-4b8f-4b43-a858-4a12d77b8299')).toBeTruthy();
       });
-      it('userKey', () => {
-        const userKey = template.userKey.regExp;
-        expect(userKey.test('something')).toBeFalsy();
-        expect(userKey.test('f5eb2e1f-4b8f-4b43-a858-4a12d77b8299')).toBeTruthy();
+      it('affiliateKey', () => {
+        const affiliateKey = template.affiliateKey.regExp;
+        expect(affiliateKey.test('something')).toBeFalsy();
+        expect(affiliateKey.test('f5eb2e1f-4b8f-4b43-a858-4a12d77b8299')).toBeTruthy();
       });
       it('endpoint', () => {
         const endpoint = template.endpoint.regExp;
