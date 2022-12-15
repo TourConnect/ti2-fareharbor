@@ -296,8 +296,7 @@ class Plugin {
       bookingQuery,
     },
   }) {
-    try {
-      assert(availabilityKey, 'an availability code is required !');
+    assert(availabilityKey, 'an availability code is required !');
     assert(R.path(['name'], holder), 'a holder\' first name is required');
     assert(R.path(['surname'], holder), 'a holder\' surname is required');
     // assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
@@ -330,10 +329,6 @@ class Plugin {
         query: bookingQuery,
       }),
     });
-    } catch (err) {
-      // console.log(err);
-      throw new Error(err);
-    }
   }
 
   async cancelBooking({
@@ -352,29 +347,24 @@ class Plugin {
       bookingQuery,
     },
   }) {
-    try {
-      assert(!isNilOrEmpty(bookingId) || !isNilOrEmpty(id), 'Invalid booking id');
-      const headers = getHeaders({
-        affiliateKey,
-        appKey,
-      });
-      const url = `${endpoint || this.endpoint}/bookings/${bookingId || id}/`;
-      const booking = R.path(['data', 'booking'], await axios({
-        method: 'delete',
-        url,
-        headers,
-      }));
-      return ({
-        cancellation: await translateBooking({
-          rootValue: booking,
-          typeDefs: bookingTypeDefs,
-          query: bookingQuery,
-        })
-      });
-    } catch (err) {
-      console.log('cancel', err);
-      throw new Error(err);
-    }
+    assert(!isNilOrEmpty(bookingId) || !isNilOrEmpty(id), 'Invalid booking id');
+    const headers = getHeaders({
+      affiliateKey,
+      appKey,
+    });
+    const url = `${endpoint || this.endpoint}/bookings/${bookingId || id}/`;
+    const booking = R.path(['data', 'booking'], await axios({
+      method: 'delete',
+      url,
+      headers,
+    }));
+    return ({
+      cancellation: await translateBooking({
+        rootValue: booking,
+        typeDefs: bookingTypeDefs,
+        query: bookingQuery,
+      })
+    });
   }
 
   async searchBooking({
@@ -397,8 +387,7 @@ class Plugin {
       bookingQuery,
     },
   }) {
-    try {
-      assert(bookingId, 'bookingId is required');
+    assert(bookingId, 'bookingId is required');
     const headers = getHeaders({
       affiliateKey,
       appKey,
@@ -414,10 +403,6 @@ class Plugin {
       typeDefs: bookingTypeDefs,
       query: bookingQuery,
     })] });
-    } catch (err) {
-      console.log('search', err);
-      throw new Error(err);
-    }
   }
 }
 
