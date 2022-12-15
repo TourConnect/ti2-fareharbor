@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axiosRaw = require('axios');
 const R = require('ramda');
 const Promise = require('bluebird');
 const assert = require('assert');
@@ -13,6 +13,14 @@ const { translateRate } = require('./resolvers/rate');
 
 const CONCURRENCY = 3; // is this ok ?
 
+const axios = async (...args) => {
+  return axiosRaw(...args)
+  .catch(err => {
+    const errMsg = R.path(['response', 'data', 'error'], err);
+    console.log(errMsg)
+    throw errMsg || err;
+  });
+};
 const isNilOrEmpty = R.either(R.isNil, R.isEmpty);
 
 const getHeaders = ({
@@ -139,7 +147,6 @@ class Plugin {
     payload: {
       productIds,
       optionIds,
-      occupancies,
     },
     typeDefsAndQueries: {
       productTypeDefs,
@@ -148,45 +155,7 @@ class Plugin {
       rateQuery,
     },
   }) {
-    assert(occupancies.length > 0, 'there should be at least one occupancy');
-    assert(productIds.length === optionIds.length, 'mismatched product/option combinations');
-    assert(productIds.length === occupancies.length, 'mismatched product/occupancies combinations');
-    assert(productIds.every(Boolean), 'some invalid productId(s)');
-    assert(optionIds.every(Boolean), 'some invalid optionId(s)');
-    assert(occupancies.every(Boolean), 'some invalid occupacies(s)');
-    const quote = occupancies.map(() => productIds.map(productId => ({ productId })));
-    const headers = getHeaders({
-      affiliateKey,
-      appKey,
-    });
-    const url = `${endpoint || this.endpoint}/items/`;
-    const rawProducts = R.path(['data', 'items'], await axios({
-      method: 'get',
-      url,
-      headers,
-    }));
-    let productsDetail = await Promise.map(R.uniq(productIds), async productId => {
-      return translateProduct({
-        rootValue: rawProducts.find(p => `${p.pk}` === `${productId}`),
-        typeDefs: productTypeDefs,
-        query: productQuery,
-      });
-    }, { concurrency: CONCURRENCY });
-    productsDetail = R.indexBy(R.prop('productId'), productsDetail);
-    // console.log({ optionIds });
-    await Promise.each(productIds, async (productId, productIdIx) => {
-      const optionDetail = productsDetail[productId]
-        .options.filter(({ optionId }) => optionId === optionIds[productIdIx])[0];
-      quote[productIdIx] = await Promise.map(
-        pickUnit(optionDetail.units, occupancies[productIdIx]), e => {
-          return translateRate({
-            rootValue: e,
-            typeDefs: rateTypeDefs,
-            query: rateQuery,
-          });
-        });
-    });
-    return { quote };
+    return { quote: [] };
   }
 
   async searchAvailability({
@@ -199,14 +168,12 @@ class Plugin {
     payload: {
       productIds,
       optionIds,
-      occupancies,
       units: unitsFromPayload,
       startDate,
       endDate,
       dateFormat,
       currency,
     },
-    typeDefsAndQueries,
     typeDefsAndQueries: {
       availTypeDefs,
       availQuery,
@@ -214,7 +181,7 @@ class Plugin {
   }) {
     assert(this.jwtKey, 'JWT secret should be set');
     let unitsWithQuantity = unitsFromPayload;
-    assert((unitsWithQuantity && unitsWithQuantity.length > 0) || (occupancies && occupancies.length > 0), 'there should be at least one occupancy');
+    assert((unitsWithQuantity && unitsWithQuantity.length > 0), 'there should be at least one unit with quantity');
     assert(
       productIds.length === optionIds.length,
       'mismatched productIds/options length',
@@ -234,22 +201,6 @@ class Plugin {
       url,
       headers,
     }));
-    if (!unitsWithQuantity && occupancies.length > 0) {
-      unitsWithQuantity = await Promise.map(productIds, async (productId, idx) => {
-        const { products: [product] } = await this.searchProducts({
-          token,
-          payload: { productId },
-          typeDefsAndQueries,
-        });
-        // retVal is an array of units
-        const retVal = pickUnit(product.options[0].units, occupancies[idx]);
-        return R.values(retVal.reduce((result, item) => {
-          if (result[item.unitId]) result[item.unitId].quantity++;
-          else result[item.unitId] = { unitId: item.unitId, quantity: 1 };
-          return result;
-        }, {}));
-      });
-    }
     assert(unitsWithQuantity[0].every(o => o.quantity), 'some invalid occupacies(s)');
     const availabilityByProduct = await Promise.map(productIds, async (productId, idx) => {
       return Promise.map(
@@ -360,7 +311,8 @@ class Plugin {
       url: `${endpoint || this.endpoint}/availabilities/${data.availabilityId}/bookings/`,
       data: {
         rebooking: rebookingId,
-        note: `${notes || ''}${reference ? `\n[Reseller Ref: ${reference} :end]` : ''}`,
+        note: notes,
+        voucher_number: reference,
         contact: {
           name: `${holder.name || ''} ${holder.surname || ''}`.trim(),
           email: holder.emailAddress,
@@ -370,6 +322,7 @@ class Plugin {
       },
       headers,
     }));
+    console.log(booking)
     return ({
       booking: await translateBooking({
         rootValue: booking,
@@ -468,30 +421,4 @@ class Plugin {
   }
 }
 
-const pickUnit = (units, paxs) => {
-  const evalOne = (unit, pax) => {
-    if (pax.age < R.path(['restrictions', 'minAge'], unit)) {
-      return false;
-    }
-    if (pax.age > R.path(['restrictions', 'maxAge'], unit)) {
-      return false;
-    }
-    return true;
-  };
-  if (paxs.length > 1) { // find group units
-    const group = units.filter(({ restrictions }) => Boolean(restrictions)).find(unit => {
-      if (
-        R.path(['restrictions', 'paxCount'], unit) === paxs.length
-        && paxs.every(pax => evalOne(unit, pax))
-      ) return true;
-      return false;
-    });
-    if (group) return [group];
-  }
-  return paxs.map(pax => units
-    .filter(unit => R.path(['restrictions', 'paxCount'], unit) === 1)
-    .find(unit => evalOne(unit, pax))); // individual units
-};
-
 module.exports = Plugin;
-module.exports.pickUnit = pickUnit;

@@ -49,24 +49,6 @@ describe('search tests', () => {
     // nada
   });
   describe('utilities & data translators', () => {
-    describe('pickUnit', () => {
-      it('adult', () => {
-        const result = Plugin.pickUnit(rawUnits, [{ age: 40 }]);
-        expect(result.length).toBe(1);
-        expect(result[0]).toContainObject([{ unitName: 'Adult' }]);
-      });
-      it('child', () => {
-        const result = Plugin.pickUnit(rawUnits, [{ age: 10 }]);
-        expect(result.length).toBe(1);
-        expect(result[0]).toContainObject([{ unitName: 'Child' }]);
-      });
-      it('senior', () => {
-        const result = Plugin.pickUnit(rawUnits, [{ age: 70 }]);
-        expect(result.length).toBe(1);
-        expect(result[0]).toContainObject([{ unitName: 'Senior' }]);
-      });
-      it.todo('family + one');
-    });
     describe('validateToken', () => {
       it('valid token', async () => {
         const retVal = await app.validateToken({

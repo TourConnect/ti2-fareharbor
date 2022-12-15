@@ -58,16 +58,7 @@ const resolvers = {
     cancelPolicy: R.path(['effective_cancellation_policy', 'type']),
     optionId: () => 'default',
     optionName: R.path(['availability', 'item', 'name']),
-    resellerReference: root => {
-      const note = root.note || '';
-      if (note.indexOf('[Reseller Ref:') === -1) return '';
-      return R.call(R.compose(
-        R.head,
-        R.split(':end]'),
-        R.last,
-        R.split('[Reseller Ref:'),
-      ), note)
-    },
+    resellerReference: R.propOr('', 'voucher_number'),
     publicUrl: R.prop('confirmation_url'),
     privateUrl: R.prop('dashboard_url'),
   },
