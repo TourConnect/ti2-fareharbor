@@ -19,10 +19,11 @@ jobs:
       - run: npm run build --if-present
       - run: npm test
         env:
-          ti2_fareharbor_endpoint: 'https://demo.fareharbor.com/api/external/v1/companies/discoversydneycruises-api-testing'
+          ti2_fareharbor_endpoint: 'https://demo.fareharbor.com/api/external/v1/companies'
           ti2_fareharbor_appKey: ${{ secrets.FAREHARBOR_APPKEY }}
           ti2_fareharbor_userKey: ${{ secrets.FAREHARBOR_USERKEY }}
           ti2_fareharbor_jwtKey: 'Reliance-Overload4-Lyrics'
+          ti2_fareharbor_shortname: discoversydneycruises-api-testing
   tag:
     if: github.ref == 'refs/heads/main'
     needs: build_and_test
