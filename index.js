@@ -17,7 +17,7 @@ const axios = async (...args) => {
   return axiosRaw(...args)
   .catch(err => {
     const errMsg = R.path(['response', 'data', 'error'], err);
-    console.log(errMsg)
+    console.log('error in ti2-fareharbor', errMsg)
     throw errMsg || err;
   });
 };
@@ -48,10 +48,20 @@ class Plugin {
         regExp: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
         description: 'the User Key provided by FareHarbor to identify the user',
       },
+      affiliateShortName: {
+        type: 'text',
+        regExp: /[0-9a-f]/,
+        description: 'short name for the affiliate company',
+      },
+      shortName: {
+        type: 'text',
+        regExp: /[0-9a-f]/,
+        description: 'short name for your company',
+      },
       endpoint: {
         type: 'text',
         regExp: /^(?!mailto:)(?:(?:http|https|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))|localhost)(?::\d{2,5})?(?:(\/|\?|#)[^\s]*)?$/i,
-        // default: 'https://fareharbor.com/api/external/v1/companies/COMPANY-CODE',
+        // default: 'https://fareharbor.com/api/external/v1/companies',
         description: 'The url api endpoint from FareHarbor and must include the company shortname (replace COMPANYCODE).',
       },
     });
@@ -61,24 +71,22 @@ class Plugin {
     token: {
       affiliateKey,
       appKey = this.appKey,
+      shortName,
       endpoint,
     },
   }) {
-    let url = (endpoint || this.endpoint)
-      .split('/companies/')[0]
-    url = `${url}/companies/`;
+    let url = `${endpoint || this.endpoint}/${shortName}/`;
     try {
       const headers = getHeaders({
         affiliateKey,
         appKey,
       });
-      const companies = R.path(['data', 'companies'], await axios({
+      const company = R.path(['data', 'company'], await axios({
         method: 'get',
         url,
         headers,
       }));
-      return Array.isArray(companies) && companies.length > 0;
-      return false;
+      return Boolean(company && company.shortname === shortName);
     } catch (err) {
       return false;
     }
@@ -89,6 +97,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint = tokenEndpoint,
+      shortName,
     },
     payload,
     typeDefsAndQueries: {
@@ -96,7 +105,7 @@ class Plugin {
       productQuery,
     },
   }) {
-    let url = `${endpoint || tokenEndpoint || this.endpoint}/items/`;
+    let url = `${endpoint || tokenEndpoint || this.endpoint}/${shortName}/items/`;
     const headers = getHeaders({
       affiliateKey,
       appKey,
@@ -108,7 +117,7 @@ class Plugin {
     }));
     const company = R.pathOr({}, ['data', 'company'], await axios({
       method: 'get',
-      url: `${endpoint}/`,
+      url: `${endpoint}/${shortName}/`,
       headers,
     }));
     if (!Array.isArray(results)) results = [results];
@@ -143,6 +152,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
+      shortName,
     },
     payload: {
       productIds,
@@ -163,6 +173,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
+      shortName,
     },
     token,
     payload: {
@@ -195,7 +206,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
+    const url = `${endpoint || this.endpoint}/${shortName}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
     const avail = R.pathOr([], ['data', 'availabilities'], await axios({
       method: 'get',
       url,
@@ -235,6 +246,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
+      shortName,
     },
     payload: {
       productIds,
@@ -261,7 +273,7 @@ class Plugin {
       appKey,
       endpoint,
     });
-    const url = `${endpoint || this.endpoint}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
+    const url = `${endpoint || this.endpoint}/${shortName}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
     const retVal = await axios({
       method: 'get',
       url,
@@ -283,11 +295,14 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
+      shortName,
     },
     payload: {
       availabilityKey,
       notes,
       reference,
+      desk,
+      agent,
       holder,
       rebookingId,
     },
@@ -307,7 +322,7 @@ class Plugin {
     let data = await jwt.verify(availabilityKey, this.jwtKey);
     let booking = R.path(['data', 'booking'], await axios({
       method: 'post',
-      url: `${endpoint || this.endpoint}/availabilities/${data.availabilityId}/bookings/`,
+      url: `${endpoint || this.endpoint}/${shortName}/availabilities/${data.availabilityId}/bookings/`,
       data: {
         rebooking: rebookingId,
         note: notes,
@@ -318,10 +333,11 @@ class Plugin {
           phone: holder.phone,
         },
         customers: data.customers,
+        ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
+        ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {})
       },
       headers,
     }));
-    console.log(booking)
     return ({
       booking: await translateBooking({
         rootValue: booking,
@@ -336,6 +352,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
+      shortName,
     },
     payload: {
       bookingId,
@@ -352,7 +369,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/bookings/${bookingId || id}/`;
+    const url = `${endpoint || this.endpoint}/${shortName}/bookings/${bookingId || id}/`;
     const booking = R.path(['data', 'booking'], await axios({
       method: 'delete',
       url,
@@ -368,10 +385,12 @@ class Plugin {
   }
 
   async searchBooking({
+    token,
     token: {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
+      shortName,
     },
     payload: {
       bookingId,
@@ -392,7 +411,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/bookings/${bookingId}/`;
+    const url = `${endpoint || this.endpoint}/${shortName}/bookings/${bookingId}/`;
     const booking = R.path(['data', 'booking'], await axios({
       method: 'get',
       url,
@@ -403,6 +422,58 @@ class Plugin {
       typeDefs: bookingTypeDefs,
       query: bookingQuery,
     })] });
+  }
+
+  async getAffiliateDesks({
+    token: {
+      affiliateKey,
+      appKey = this.appKey,
+      endpoint,
+      affiliateShortName,
+    },
+  }) {
+    const headers = getHeaders({
+      affiliateKey,
+      appKey,
+    });
+    const url = `${endpoint || this.endpoint}/${affiliateShortName}/desks/`;
+    const desks = R.path(['data', 'desks'], await axios({
+      method: 'get',
+      url,
+      headers,
+    }));
+    return {
+      desks: desks.map(d => ({
+        id: d.pk,
+        name: d.name,
+      }))
+    }
+  }
+
+  async getAffiliateAgents({
+    token: {
+      affiliateKey,
+      appKey = this.appKey,
+      endpoint,
+      affiliateShortName,
+    },
+  }) {
+    const headers = getHeaders({
+      affiliateKey,
+      appKey,
+    });
+    const url = `${endpoint || this.endpoint}/${affiliateShortName}/agents/`;
+    const agents = R.path(['data', 'agents'], await axios({
+      method: 'get',
+      url,
+      headers,
+    }));
+    return {
+      agents: agents.map(d => ({
+        id: d.pk,
+        name: d.name,
+      }))
+    }
   }
 }
 

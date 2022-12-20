@@ -42,13 +42,7 @@ const resolvers = {
       phoneNumber: R.path(['contact', 'phone'], root),
       emailAddress: R.path(['contact', 'email'], root),
     }),
-    notes: root => {
-      const note = root.note || '';
-      if (note.indexOf('[Reseller Ref:') === -1) return note;
-      const beforeRef = note.split('[Reseller Ref:')[0];
-      const afterRef = R.last(note.split(':end]'));
-      return `${beforeRef || ''} ${afterRef || ''}`.trim();
-    },
+    notes: root => root.note || '',
     price: root => ({
       original: R.path(['receipt_total'], root),
       retail: R.path(['receipt_total'], root),
@@ -61,6 +55,8 @@ const resolvers = {
     resellerReference: R.propOr('', 'voucher_number'),
     publicUrl: R.prop('confirmation_url'),
     privateUrl: R.prop('dashboard_url'),
+    agent: root => root.agent && root.agent.pk ? { id: root.agent.pk, name: root.agent.name } : null,
+    desk: root => root.desk && root.desk.pk ? { id: root.desk.pk, name: root.desk.name } : null,
   },
 };
 

@@ -44,11 +44,13 @@ Object {
 
 exports[`search tests utilities & data translators translators translateBooking 1`] = `
 Object {
+  "agent": null,
   "allDay": false,
   "bookingDate": null,
   "bookingId": "4509eb05-79cb-405d-8aba-e1d0edaef309",
   "cancelPolicy": "hours-before-start",
   "cancellable": true,
+  "desk": null,
   "editable": true,
   "end": "2022-08-18T12:00:00+1000",
   "holder": Object {

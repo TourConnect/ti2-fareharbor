@@ -43,6 +43,7 @@ describe('search tests', () => {
     appKey: process.env.ti2_fareharbor_appKey,
     endpoint: process.env.ti2_fareharbor_endpoint,
     affiliateKey: process.env.ti2_fareharbor_userKey,
+    shortName: process.env.ti2_fareharbor_shortname,
   };
   const dateFormat = 'DD/MM/YYYY';
   beforeAll(async () => {
@@ -184,32 +185,6 @@ describe('search tests', () => {
       expect(availability).toHaveLength(1);
       expect(availability[0].length).toBeGreaterThan(0);
     });
-    it('should be able to get quotes', async () => {
-      const retVal = await app.searchQuote({
-        token,
-        typeDefsAndQueries,
-        payload: {
-          startDate: moment().add(6, 'M').format(dateFormat),
-          endDate: moment().add(6, 'M').add(2, 'd').format(dateFormat),
-          dateFormat,
-          productIds: busProducts.map(({ productId }) => productId),
-          optionIds: busProducts.map(({ options }) =>
-            faker.random.arrayElement(options).optionId),
-          occupancies: [
-            [{ age: 30 }, { age: 40 }],
-          ],
-        },
-      });
-      expect(retVal).toBeTruthy();
-      const { quote } = retVal;
-      expect(quote.length).toBeGreaterThan(0);
-      expect(quote[0]).toContainObject([{
-        rateName: 'adult',
-        pricing: expect.toContainObject([{
-          currencyPrecision: 2,
-        }]),
-      }]);
-    });
     let availabilityKey;
     it('should be able to get availability', async () => {
       const retVal = await app.searchAvailability({
@@ -221,9 +196,13 @@ describe('search tests', () => {
           dateFormat,
           productIds: [32439],
           optionIds: ['default'],
-          occupancies: [
-            [{ age: 30 }, { age: 40 }, { age: 70 }],
-          ],
+          units: [[{
+            unitId: 75992,
+            quantity: 2,
+          }, {
+            unitId: 76013,
+            quantity: 1,
+          }]],
         },
       });
       expect(retVal).toBeTruthy();
@@ -251,7 +230,7 @@ describe('search tests', () => {
             country: faker.address.countryCode(),
             locales: ['en-US', 'en', 'es'],
           },
-          reference,
+          // reference,
         },
       });
       expect(retVal.booking).toBeTruthy();
