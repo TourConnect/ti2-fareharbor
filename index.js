@@ -96,7 +96,7 @@ class Plugin {
     token: {
       affiliateKey,
       appKey = this.appKey,
-      endpoint = tokenEndpoint,
+      endpoint,
       shortName,
     },
     payload,
@@ -105,7 +105,7 @@ class Plugin {
       productQuery,
     },
   }) {
-    let url = `${endpoint || tokenEndpoint || this.endpoint}/${shortName}/items/`;
+    let url = `${endpoint || this.endpoint}/${shortName}/items/`;
     const headers = getHeaders({
       affiliateKey,
       appKey,
@@ -117,7 +117,7 @@ class Plugin {
     }));
     const company = R.pathOr({}, ['data', 'company'], await axios({
       method: 'get',
-      url: `${endpoint}/${shortName}/`,
+      url: `${endpoint || this.endpoint}/${shortName}/`,
       headers,
     }));
     if (!Array.isArray(results)) results = [results];
@@ -271,7 +271,6 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      endpoint,
     });
     const url = `${endpoint || this.endpoint}/${shortName}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
     const retVal = await axios({
