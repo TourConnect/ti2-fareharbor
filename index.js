@@ -18,7 +18,8 @@ const axios = async (...args) => {
   .catch(err => {
     const errMsg = R.path(['response', 'data', 'error'], err);
     console.log('error in ti2-fareharbor', errMsg)
-    throw errMsg || err;
+    if (errMsg) throw new Error(errMsg);
+    throw err;
   });
 };
 const isNilOrEmpty = R.either(R.isNil, R.isEmpty);
