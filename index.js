@@ -223,10 +223,15 @@ class Plugin {
           });
         }),
         async obj => {
+          const lodgings = R.pathOr([], ['data', 'lodgings'], await axios({
+            method: 'get',
+            url: `${endpoint || this.endpoint}/${shortName}/availabilities/${obj.pk}/lodgings/`,
+            headers,
+          }));
           return translateAvailability({
             typeDefs: availTypeDefs,
             query: availQuery,
-            rootValue: obj,
+            rootValue: { ...obj, lodgings },
             variableValues: {
               productId,
               optionId: optionIds[idx],
@@ -305,6 +310,7 @@ class Plugin {
       agent,
       holder,
       rebookingId,
+      pickupPoint,
     },
     typeDefsAndQueries: {
       bookingTypeDefs,
@@ -333,6 +339,7 @@ class Plugin {
           phone: holder.phone,
         },
         customers: data.customers,
+        ...(pickupPoint && pickupPoint.id ? { lodging: pickupPoint.id } : {}),
         ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
         ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {})
       },
