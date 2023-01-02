@@ -39,6 +39,14 @@ const resolvers = {
       return sorted[0];
     },
     unitPricing: root => R.path(['customer_type_rates'], root),
+    pickupAvailable: root => Boolean(root.lodgings && root.lodgings.some(l => l.is_pickup_available)),
+    pickupRequired: () => false,
+    pickupPoints: root => R.pathOr([], ['lodgings'], root)
+    .map(l => ({
+      id: R.prop('pk', l),
+      name: R.prop('name', l),
+      pickupAvail: R.prop('is_pickup_available', l)
+    }))
   },
   Pricing: {
     unitId: R.path(['customer_prototype', 'pk']),
