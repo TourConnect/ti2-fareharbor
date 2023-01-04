@@ -9,7 +9,6 @@ const wildcardMatch = require('./utils/wildcardMatch');
 const { translateProduct } = require('./resolvers/product');
 const { translateAvailability } = require('./resolvers/availability');
 const { translateBooking } = require('./resolvers/booking');
-const { translateRate } = require('./resolvers/rate');
 
 const CONCURRENCY = 3; // is this ok ?
 
@@ -17,7 +16,7 @@ const axios = async (...args) => {
   return axiosRaw(...args)
   .catch(err => {
     const errMsg = R.path(['response', 'data', 'error'], err);
-    console.log('error in ti2-fareharbor', errMsg)
+    console.log('error in ti2-fareharbor', args[0].url, errMsg)
     if (errMsg) throw new Error(errMsg);
     throw err;
   });
@@ -76,7 +75,7 @@ class Plugin {
       endpoint,
     },
   }) {
-    let url = `${endpoint || this.endpoint}/${shortName}/`;
+    let url = `${endpoint || this.endpoint}/${shortName.trim()}/`;
     try {
       const headers = getHeaders({
         affiliateKey,
@@ -106,7 +105,7 @@ class Plugin {
       productQuery,
     },
   }) {
-    let url = `${endpoint || this.endpoint}/${shortName}/items/`;
+    let url = `${endpoint || this.endpoint}/${shortName.trim()}/items/`;
     const headers = getHeaders({
       affiliateKey,
       appKey,
@@ -118,7 +117,7 @@ class Plugin {
     }));
     const company = R.pathOr({}, ['data', 'company'], await axios({
       method: 'get',
-      url: `${endpoint || this.endpoint}/${shortName}/`,
+      url: `${endpoint || this.endpoint}/${shortName.trim()}/`,
       headers,
     }));
     if (!Array.isArray(results)) results = [results];
@@ -207,7 +206,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${shortName}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
+    const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
     const avail = R.pathOr([], ['data', 'availabilities'], await axios({
       method: 'get',
       url,
@@ -278,7 +277,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${shortName}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
+    const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
     const retVal = await axios({
       method: 'get',
       url,
@@ -328,7 +327,7 @@ class Plugin {
     let data = await jwt.verify(availabilityKey, this.jwtKey);
     let booking = R.path(['data', 'booking'], await axios({
       method: 'post',
-      url: `${endpoint || this.endpoint}/${shortName}/availabilities/${data.availabilityId}/bookings/`,
+      url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${data.availabilityId}/bookings/`,
       data: {
         rebooking: rebookingId,
         note: notes,
@@ -339,7 +338,7 @@ class Plugin {
           phone: holder.phone,
         },
         customers: data.customers,
-        ...(pickupPoint && pickupPoint.id ? { lodging: pickupPoint.id } : {}),
+        ...(pickupPoint && !isNaN(pickupPoint) ? { lodging: parseInt(pickupPoint) } : {}),
         ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
         ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {})
       },
@@ -376,7 +375,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${shortName}/bookings/${bookingId || id}/`;
+    const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId || id}/`;
     const booking = R.path(['data', 'booking'], await axios({
       method: 'delete',
       url,
@@ -418,7 +417,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${shortName}/bookings/${bookingId}/`;
+    const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId}/`;
     const booking = R.path(['data', 'booking'], await axios({
       method: 'get',
       url,
@@ -443,7 +442,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${affiliateShortName}/desks/`;
+    const url = `${endpoint || this.endpoint}/${affiliateShortName.trim()}/desks/`;
     const desks = R.path(['data', 'desks'], await axios({
       method: 'get',
       url,
@@ -469,7 +468,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${affiliateShortName}/agents/`;
+    const url = `${endpoint || this.endpoint}/${affiliateShortName.trim()}/agents/`;
     const agents = R.path(['data', 'agents'], await axios({
       method: 'get',
       url,

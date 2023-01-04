@@ -8,6 +8,9 @@ Object {
   "dateTimeStart": "2022-08-18T15:30:00+1000",
   "key": null,
   "offer": null,
+  "pickupAvailable": false,
+  "pickupPoints": Array [],
+  "pickupRequired": false,
   "pricing": Object {
     "currencyPrecision": 2,
     "net": 2500,
@@ -65,6 +68,11 @@ Object {
   "optionId": "default",
   "optionName": "Daily Cruise Tour",
   "orderId": "#344488",
+  "pickupHotel": null,
+  "pickupHotelRoom": null,
+  "pickupPoint": null,
+  "pickupPointId": null,
+  "pickupRequested": false,
   "price": Object {
     "currency": "aud",
     "currencyPrecision": 2,
