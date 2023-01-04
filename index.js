@@ -16,7 +16,7 @@ const axios = async (...args) => {
   return axiosRaw(...args)
   .catch(err => {
     const errMsg = R.path(['response', 'data', 'error'], err);
-    console.log('error in ti2-fareharbor', args[0].url, errMsg)
+    console.log('error in ti2-fareharbor', args[0], errMsg)
     if (errMsg) throw new Error(errMsg);
     throw err;
   });
@@ -86,7 +86,7 @@ class Plugin {
         url,
         headers,
       }));
-      return Boolean(company && company.shortname === shortName);
+      return Boolean(company && company.shortname === shortName.trim());
     } catch (err) {
       return false;
     }
@@ -224,7 +224,7 @@ class Plugin {
         async obj => {
           const lodgings = R.pathOr([], ['data', 'lodgings'], await axios({
             method: 'get',
-            url: `${endpoint || this.endpoint}/${shortName}/availabilities/${obj.pk}/lodgings/`,
+            url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${obj.pk}/lodgings/`,
             headers,
           }));
           return translateAvailability({
