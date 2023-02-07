@@ -22,7 +22,7 @@ const getHeaders = ({
   ...affiliateKey ? { 'X-FareHarbor-API-User': affiliateKey }: {},
   ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
-  requestId,
+  ...requestId ? { requestId } : {},
 });
 
 class Plugin {
