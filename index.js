@@ -535,13 +535,15 @@ class Plugin {
       pickupTypeDefs,
       pickupQuery,
     },
+    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
+      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/lodgings/`;
-    const lodgings = R.path(['data', 'lodgings'], await axios({
+    const lodgings = R.path(['data', 'lodgings'], await this.axios({
       method: 'get',
       url,
       headers,
