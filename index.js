@@ -9,6 +9,7 @@ const wildcardMatch = require('./utils/wildcardMatch');
 const { translateProduct } = require('./resolvers/product');
 const { translateAvailability } = require('./resolvers/availability');
 const { translateBooking } = require('./resolvers/booking');
+const { translatePickupPoint } = require('./resolvers/pickup-point');
 
 const CONCURRENCY = 3; // is this ok ?
 
@@ -480,6 +481,35 @@ class Plugin {
         name: d.name,
       }))
     }
+  }
+
+  async getPickupPoints({
+    token: {
+      affiliateKey,
+      appKey = this.appKey,
+      endpoint,
+      shortName,
+    },
+    typeDefsAndQueries: {
+      pickupTypeDefs,
+      pickupQuery,
+    },
+  }) {
+    const headers = getHeaders({
+      affiliateKey,
+      appKey,
+    });
+    const url = `${endpoint || this.endpoint}/${shortName.trim()}/lodgings/`;
+    const lodgings = R.path(['data', 'lodgings'], await axios({
+      method: 'get',
+      url,
+      headers,
+    }));
+    return ({ pickupPoints: await Promise.map(lodgings, lodging => translatePickupPoint({
+      rootValue: lodging, 
+      typeDefs: pickupTypeDefs,
+      query: pickupQuery,
+    })) });
   }
 }
 
