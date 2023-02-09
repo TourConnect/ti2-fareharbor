@@ -6,6 +6,7 @@ const { typeDefs: productTypeDefs, query: productQuery } = require('./node_modul
 const { typeDefs: availTypeDefs, query: availQuery } = require('./node_modules/ti2/controllers/graphql-schemas/availability');
 const { typeDefs: bookingTypeDefs, query: bookingQuery } = require('./node_modules/ti2/controllers/graphql-schemas/booking');
 const { typeDefs: rateTypeDefs, query: rateQuery } = require('./node_modules/ti2/controllers/graphql-schemas/rate');
+const { typeDefs: pickupTypeDefs, query: pickupQuery } = require('./node_modules/ti2/controllers/graphql-schemas/pickup-point');
 
 const typeDefsAndQueries = {
   productTypeDefs,
@@ -16,6 +17,8 @@ const typeDefsAndQueries = {
   bookingQuery,
   rateTypeDefs,
   rateQuery,
+  pickupTypeDefs,
+  pickupQuery,
 };
 const Plugin = require('./index');
 const rawUnits = require('./__fixtures__/raw-units.js');
@@ -305,6 +308,13 @@ describe('search tests', () => {
       expect(Array.isArray(retVal.bookings)).toBeTruthy();
       ({ bookings } = retVal);
       expect(R.path([0, 'id'], bookings)).toBeTruthy();
+    });
+    it('should be able to get a list of pickuppoints', async () => {
+      const retVal = await app.getPickupPoints({
+        token,
+        typeDefsAndQueries,
+      });
+      expect(Array.isArray(retVal.pickupPoints)).toBeTruthy();
     });
   });
 });

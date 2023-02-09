@@ -44,7 +44,7 @@ class Plugin {
     const pluginObj = this;
     this.axios = async (...args) => axiosRaw(...args).catch(err => {
       const errMsg = R.path(['response', 'data', 'error'], err);
-      console.log('error in ti2-ventrata', args[0], errMsg);
+      console.log('error in ti2-fareharbor', args[0], errMsg);
       if (pluginObj.events) {
         pluginObj.events.emit(`${this.name}.axios.error`, { request: args[0], err, errMsg });
       }
@@ -526,13 +526,15 @@ class Plugin {
       pickupTypeDefs,
       pickupQuery,
     },
+    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
+      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/lodgings/`;
-    const lodgings = R.path(['data', 'lodgings'], await axios({
+    const lodgings = R.path(['data', 'lodgings'], await this.axios({
       method: 'get',
       url,
       headers,
