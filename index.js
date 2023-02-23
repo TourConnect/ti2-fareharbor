@@ -74,12 +74,12 @@ class Plugin {
       },
       affiliateShortName: {
         type: 'text',
-        regExp: /[0-9a-f]/,
+        regExp: /[0-9a-z]/,
         description: 'short name for the affiliate company',
       },
       shortName: {
         type: 'text',
-        regExp: /[0-9a-f]/,
+        regExp: /[0-9a-z]/,
         description: 'short name for your company',
       },
       endpoint: {
