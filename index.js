@@ -100,19 +100,19 @@ class Plugin {
     },
     requestId,
   }) {
-    let url = `${endpoint || this.endpoint}/${shortName.trim()}/`;
+    let url = `${endpoint || this.endpoint}/${shortName.trim()}/items/`;
     try {
       const headers = getHeaders({
         affiliateKey,
         appKey,
         requestId,
       });
-      const company = R.path(['data', 'company'], await this.axios({
+      const items = R.path(['data', 'items'], await this.axios({
         method: 'get',
         url,
         headers,
       }));
-      return Boolean(company && company.shortname === shortName.trim());
+      return Boolean(items && items.length);
     } catch (err) {
       return false;
     }
