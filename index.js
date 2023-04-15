@@ -17,12 +17,10 @@ const isNilOrEmpty = R.either(R.isNil, R.isEmpty);
 const getHeaders = ({
   affiliateKey,
   appKey,
-  requestId,
 }) => ({
   ...affiliateKey ? { 'X-FareHarbor-API-User': affiliateKey }: {},
   ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
-  ...requestId ? { requestId } : {},
 });
 
 class Plugin {
@@ -71,14 +69,12 @@ class Plugin {
       shortName,
       endpoint,
     },
-    requestId,
   }) {
     let url = `${endpoint || this.endpoint}/${shortName.trim()}/items/`;
     try {
       const headers = getHeaders({
         affiliateKey,
         appKey,
-        requestId,
       });
       const items = R.path(['data', 'items'], await axios({
         method: 'get',
@@ -104,13 +100,11 @@ class Plugin {
       productTypeDefs,
       productQuery,
     },
-    requestId,
   }) {
     let url = `${endpoint || this.endpoint}/${shortName.trim()}/items/`;
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     let results = R.pathOr([], ['data', 'items'], await axios({
       method: 'get',
@@ -166,7 +160,6 @@ class Plugin {
       rateTypeDefs,
       rateQuery,
     },
-    requestId,
   }) {
     return { quote: [] };
   }
@@ -193,7 +186,6 @@ class Plugin {
       availTypeDefs,
       availQuery,
     },
-    requestId,
   }) {
     assert(this.jwtKey, 'JWT secret should be set');
     let unitsWithQuantity = unitsFromPayload;
@@ -210,7 +202,6 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
     const avail = R.pathOr([], ['data', 'availabilities'], await axios({
@@ -271,7 +262,6 @@ class Plugin {
       availTypeDefs,
       availQuery,
     },
-    requestId,
   }) {
     assert(
       productIds.length === optionIds.length,
@@ -284,7 +274,6 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
     const retVal = await axios({
@@ -325,7 +314,6 @@ class Plugin {
       bookingTypeDefs,
       bookingQuery,
     },
-    requestId,
   }) {
     assert(availabilityKey, 'an availability code is required !');
     assert(R.path(['name'], holder), 'a holder\' first name is required');
@@ -334,7 +322,6 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     let data = await jwt.verify(availabilityKey, this.jwtKey);
     let booking = R.path(['data', 'booking'], await axios({
@@ -382,13 +369,11 @@ class Plugin {
       bookingTypeDefs,
       bookingQuery,
     },
-    requestId,
   }) {
     assert(!isNilOrEmpty(bookingId) || !isNilOrEmpty(id), 'Invalid booking id');
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId || id}/`;
     const booking = R.path(['data', 'booking'], await axios({
@@ -427,13 +412,11 @@ class Plugin {
       bookingTypeDefs,
       bookingQuery,
     },
-    requestId,
   }) {
     assert(bookingId, 'bookingId is required');
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId}/`;
     const booking = R.path(['data', 'booking'], await axios({
@@ -456,12 +439,10 @@ class Plugin {
       endpoint,
       affiliateShortName,
     },
-    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${affiliateShortName.trim()}/desks/`;
     const desks = R.path(['data', 'desks'], await axios({
@@ -485,12 +466,10 @@ class Plugin {
       endpoint,
       affiliateShortName,
     },
-    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${affiliateShortName.trim()}/agents/`;
     const agents = R.path(['data', 'agents'], await axios({
@@ -518,12 +497,10 @@ class Plugin {
       pickupTypeDefs,
       pickupQuery,
     },
-    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/lodgings/`;
     const lodgings = R.path(['data', 'lodgings'], await axios({
