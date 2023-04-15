@@ -1,4 +1,3 @@
-const axiosRaw = require('axios');
 const R = require('ramda');
 const Promise = require('bluebird');
 const assert = require('assert');
@@ -18,21 +17,11 @@ const isNilOrEmpty = R.either(R.isNil, R.isEmpty);
 const getHeaders = ({
   affiliateKey,
   appKey,
-  requestId,
 }) => ({
   ...affiliateKey ? { 'X-FareHarbor-API-User': affiliateKey }: {},
   ...appKey ? { 'X-FareHarbor-API-App': appKey } : {},
   'Content-Type': 'application/json',
-  ...requestId ? { requestId } : {},
 });
-
-const axiosSafeRequest = R.pick(['headers', 'method', 'url', 'data']);
-const axiosSafeResponse = response => {
-  const retVal = R.pick(['data', 'status', 'statusText', 'headers', 'request', 'config'], response);
-  retVal.request = axiosSafeRequest(retVal.request);
-  retVal.config = axiosSafeRequest(retVal.config);
-  return retVal;
-};
 
 class Plugin {
   constructor(params) { // we get the env variables from here
@@ -40,27 +29,8 @@ class Plugin {
       this[attr] = value;
     });
     if (this.events) {
-      axiosRaw.interceptors.request.use(request => {
-        this.events.emit(`${this.name}.axios.request`, axiosSafeRequest(request));
-        return request;
-      });
-      axiosRaw.interceptors.response.use(response => {
-        this.events.emit(`${this.name}.axios.response`, axiosSafeResponse(response));
-        return response;
-      });
     }
     const pluginObj = this;
-    this.axios = async (...args) => axiosRaw(...args).catch(err => {
-      const errMsg = R.omit(['config'], err.toJSON());
-      console.log(`error in ${this.name}`, args[0], errMsg);
-      if (pluginObj.events) {
-        pluginObj.events.emit(`${this.name}.axios.error`, {
-          request: args[0],
-          err: errMsg,
-        });
-      }
-      throw R.pathOr(err, ['response', 'data', 'error'], err);
-    });
     this.tokenTemplate = () => ({
       appKey: {
         type: 'text',
@@ -92,22 +62,21 @@ class Plugin {
   }
 
   async validateToken({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
       shortName,
       endpoint,
     },
-    requestId,
   }) {
     let url = `${endpoint || this.endpoint}/${shortName.trim()}/items/`;
     try {
       const headers = getHeaders({
         affiliateKey,
         appKey,
-        requestId,
       });
-      const items = R.path(['data', 'items'], await this.axios({
+      const items = R.path(['data', 'items'], await axios({
         method: 'get',
         url,
         headers,
@@ -119,6 +88,7 @@ class Plugin {
   }
 
   async searchProducts({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
@@ -130,20 +100,18 @@ class Plugin {
       productTypeDefs,
       productQuery,
     },
-    requestId,
   }) {
     let url = `${endpoint || this.endpoint}/${shortName.trim()}/items/`;
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
-    let results = R.pathOr([], ['data', 'items'], await this.axios({
+    let results = R.pathOr([], ['data', 'items'], await axios({
       method: 'get',
       url,
       headers,
     }));
-    const company = R.pathOr({}, ['data', 'company'], await this.axios({
+    const company = R.pathOr({}, ['data', 'company'], await axios({
       method: 'get',
       url: `${endpoint || this.endpoint}/${shortName.trim()}/`,
       headers,
@@ -192,12 +160,12 @@ class Plugin {
       rateTypeDefs,
       rateQuery,
     },
-    requestId,
   }) {
     return { quote: [] };
   }
 
   async searchAvailability({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
@@ -218,7 +186,6 @@ class Plugin {
       availTypeDefs,
       availQuery,
     },
-    requestId,
   }) {
     assert(this.jwtKey, 'JWT secret should be set');
     let unitsWithQuantity = unitsFromPayload;
@@ -235,10 +202,9 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/?detailed=yes`;
-    const avail = R.pathOr([], ['data', 'availabilities'], await this.axios({
+    const avail = R.pathOr([], ['data', 'availabilities'], await axios({
       method: 'get',
       url,
       headers,
@@ -253,7 +219,7 @@ class Plugin {
           });
         }),
         async obj => {
-          const lodgings = R.pathOr([], ['data', 'lodgings'], await this.axios({
+          const lodgings = R.pathOr([], ['data', 'lodgings'], await axios({
             method: 'get',
             url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${obj.pk}/lodgings/`,
             headers,
@@ -278,6 +244,7 @@ class Plugin {
   }
 
   async availabilityCalendar({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
@@ -295,7 +262,6 @@ class Plugin {
       availTypeDefs,
       availQuery,
     },
-    requestId,
   }) {
     assert(
       productIds.length === optionIds.length,
@@ -308,10 +274,9 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
-    const retVal = await this.axios({
+    const retVal = await axios({
       method: 'get',
       url,
       headers,
@@ -328,6 +293,7 @@ class Plugin {
   }
 
   async createBooking({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
@@ -348,7 +314,6 @@ class Plugin {
       bookingTypeDefs,
       bookingQuery,
     },
-    requestId,
   }) {
     assert(availabilityKey, 'an availability code is required !');
     assert(R.path(['name'], holder), 'a holder\' first name is required');
@@ -357,10 +322,9 @@ class Plugin {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     let data = await jwt.verify(availabilityKey, this.jwtKey);
-    let booking = R.path(['data', 'booking'], await this.axios({
+    let booking = R.path(['data', 'booking'], await axios({
       method: 'post',
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${data.availabilityId}/bookings/`,
       data: {
@@ -389,6 +353,7 @@ class Plugin {
   }
 
   async cancelBooking({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
@@ -404,16 +369,14 @@ class Plugin {
       bookingTypeDefs,
       bookingQuery,
     },
-    requestId,
   }) {
     assert(!isNilOrEmpty(bookingId) || !isNilOrEmpty(id), 'Invalid booking id');
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId || id}/`;
-    const booking = R.path(['data', 'booking'], await this.axios({
+    const booking = R.path(['data', 'booking'], await axios({
       method: 'delete',
       url,
       headers,
@@ -428,6 +391,7 @@ class Plugin {
   }
 
   async searchBooking({
+    axios,
     token,
     token: {
       affiliateKey,
@@ -448,16 +412,14 @@ class Plugin {
       bookingTypeDefs,
       bookingQuery,
     },
-    requestId,
   }) {
     assert(bookingId, 'bookingId is required');
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId}/`;
-    const booking = R.path(['data', 'booking'], await this.axios({
+    const booking = R.path(['data', 'booking'], await axios({
       method: 'get',
       url,
       headers,
@@ -470,21 +432,20 @@ class Plugin {
   }
 
   async getAffiliateDesks({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
       affiliateShortName,
     },
-    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${affiliateShortName.trim()}/desks/`;
-    const desks = R.path(['data', 'desks'], await this.axios({
+    const desks = R.path(['data', 'desks'], await axios({
       method: 'get',
       url,
       headers,
@@ -498,21 +459,20 @@ class Plugin {
   }
 
   async getAffiliateAgents({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
       affiliateShortName,
     },
-    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${affiliateShortName.trim()}/agents/`;
-    const agents = R.path(['data', 'agents'], await this.axios({
+    const agents = R.path(['data', 'agents'], await axios({
       method: 'get',
       url,
       headers,
@@ -526,6 +486,7 @@ class Plugin {
   }
 
   async getPickupPoints({
+    axios,
     token: {
       affiliateKey,
       appKey = this.appKey,
@@ -536,15 +497,13 @@ class Plugin {
       pickupTypeDefs,
       pickupQuery,
     },
-    requestId,
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
-      requestId,
     });
     const url = `${endpoint || this.endpoint}/${shortName.trim()}/lodgings/`;
-    const lodgings = R.path(['data', 'lodgings'], await this.axios({
+    const lodgings = R.path(['data', 'lodgings'], await axios({
       method: 'get',
       url,
       headers,
