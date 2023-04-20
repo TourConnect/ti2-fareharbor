@@ -28,9 +28,6 @@ class Plugin {
     Object.entries(params).forEach(([attr, value]) => {
       this[attr] = value;
     });
-    if (this.events) {
-    }
-    const pluginObj = this;
     this.tokenTemplate = () => ({
       appKey: {
         type: 'text',
@@ -59,6 +56,10 @@ class Plugin {
         description: 'The url api endpoint from FareHarbor and must include the company shortname (replace COMPANYCODE).',
       },
     });
+    this.errorPathsAxiosErrors = () => ([ // axios triggered errors
+      ['response', 'data', 'error'],
+    ]);
+    this.errorPathsAxiosAny = () => ([]); // 200's that should be errors
   }
 
   async validateToken({
