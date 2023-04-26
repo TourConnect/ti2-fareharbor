@@ -310,6 +310,7 @@ class Plugin {
       holder,
       rebookingId,
       pickupPoint,
+      customFieldValues,
     },
     typeDefsAndQueries: {
       bookingTypeDefs,
@@ -340,7 +341,14 @@ class Plugin {
         customers: data.customers,
         ...(pickupPoint && !isNaN(pickupPoint) ? { lodging: parseInt(pickupPoint) } : {}),
         ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
-        ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {})
+        ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {}),
+        ...(customFieldValues && customFieldValues.length ? {
+          custom_field_values: customFieldValues.filter(o => o.value).map(o => ({
+            custom_field: o.field.id,
+            value: o.value && o.value.value ? o.value.value : o.value,
+            ...(o.field.type === 'extended-option' ? { 'extended-option': o.value.value } : {})
+          }))
+        } : {})
       },
       headers,
     }));
@@ -514,6 +522,67 @@ class Plugin {
       typeDefs: pickupTypeDefs,
       query: pickupQuery,
     })) });
+  }
+
+  async getCreateBookingFields({
+    axios,
+    token: {
+      affiliateKey,
+      appKey = this.appKey,
+      endpoint,
+      shortName,
+    },
+  }) {
+    const headers = getHeaders({
+      affiliateKey,
+      appKey,
+    });
+    // get products
+    const products = R.path(['data', 'items'], await axios({
+      method: 'get',
+      url: `${endpoint || this.endpoint}/${shortName.trim()}/items/`,
+      headers,
+    }));
+    if (!products || !products.length) return { fields: [] };
+    // get minimal availability
+    let avail;
+    let availProductIndex = 0;
+    while (!avail && availProductIndex < products.length) {
+      const firstAvail = R.pathOr([], ['data', 'availabilities', 0], await axios({
+        method: 'get',
+        url: `${endpoint || this.endpoint}/${shortName.trim()}/items/${
+          R.path([availProductIndex, 'pk'], products)
+        }/minimal/availabilities/date/${moment().add(1, 'M').format('YYYY-MM-DD')}/`,
+        headers,
+      }));
+      if (firstAvail && firstAvail.capacity) {
+        avail = firstAvail;
+      } else availProductIndex++;
+    }
+    if (!avail) return { fields: [] };
+    const detailedAvail = R.path(['data', 'availability'], await axios({
+      url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${avail.pk}/`,
+      method: 'get',
+      headers,
+    }));
+    if (!R.path(['custom_field_instances', 'length'], detailedAvail)) {
+      return { fields: [] };
+    }
+    // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/custom-fields.md
+    // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/data-types.md
+    return ({
+      fields: R.path(['custom_field_instances'], detailedAvail).map(o => ({
+        id: o.custom_field.pk,
+        subtitle: o.custom_field.name === o.custom_field.title ? '' : o.custom_field.name,
+        title: o.custom_field.title,
+        // The custom field's type. Supported types: yes-no, short, long, and extended-option.
+        type: o.custom_field.type,
+        options: o.custom_field.extended_options ? o.custom_field.extended_options.map(o => ({
+          value: o.pk,
+          label: o.name,
+        })) : undefined,
+      }))
+    });
   }
 }
 
