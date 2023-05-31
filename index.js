@@ -346,7 +346,7 @@ class Plugin {
           custom_field_values: customFieldValues.filter(o => o.value).map(o => ({
             custom_field: o.field.id,
             value: o.value && o.value.value ? o.value.value : o.value,
-            ...(o.field.type === 'extended-option' ? { 'extended-option': o.value.value } : {})
+            ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
           }))
         } : {})
       },
@@ -575,7 +575,7 @@ class Plugin {
         id: o.custom_field.pk,
         subtitle: o.custom_field.name === o.custom_field.title ? '' : o.custom_field.name,
         title: o.custom_field.title,
-        // The custom field's type. Supported types: yes-no, short, long, and extended-option.
+        // The custom field's type. Supported types: yes-no, short, long, count, and extended-option.
         type: o.custom_field.type,
         options: o.custom_field.extended_options ? o.custom_field.extended_options.map(o => ({
           value: o.pk,
