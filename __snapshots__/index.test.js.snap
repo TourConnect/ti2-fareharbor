@@ -7,7 +7,7 @@ Object {
   "dateTimeEnd": "2022-08-18T15:30:00+1000",
   "dateTimeStart": "2022-08-18T15:30:00+1000",
   "key": null,
-  "offer": null,
+  "offers": null,
   "pickupAvailable": false,
   "pickupPoints": Array [],
   "pickupRequired": false,
