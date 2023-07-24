@@ -213,12 +213,13 @@ class Plugin {
     assert(unitsWithQuantity[0].every(o => o.quantity), 'some invalid occupacies(s)');
     const availabilityByProduct = await Promise.map(productIds, async (productId, idx) => {
       return Promise.map(
-        avail.filter(o => {
-          return unitsWithQuantity[0].every(u => {
-            const foundCus = o.customer_type_rates.find(c => `${u.unitId}` === `${R.path(['customer_prototype', 'pk'], c)}`);
-            return foundCus && foundCus.capacity >= u.quantity
-          });
-        }),
+        // avail.filter(o => {
+        //   return unitsWithQuantity[0].every(u => {
+        //     const foundCus = o.customer_type_rates.find(c => `${u.unitId}` === `${R.path(['customer_prototype', 'pk'], c)}`);
+        //     return foundCus && foundCus.capacity >= u.quantity
+        //   });
+        // }),
+        avail,
         async obj => {
           const lodgings = R.pathOr([], ['data', 'lodgings'], await axios({
             method: 'get',
@@ -566,12 +567,13 @@ class Plugin {
       headers,
     }));
     if (!R.path(['custom_field_instances', 'length'], detailedAvail)) {
-      return { fields: [] };
+      return { fields: [], customFields: [] };
     }
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/custom-fields.md
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/data-types.md
     return ({
-      fields: R.path(['custom_field_instances'], detailedAvail).map(o => ({
+      fields: [],
+      customFields: R.path(['custom_field_instances'], detailedAvail).map(o => ({
         id: o.custom_field.pk,
         subtitle: o.custom_field.name === o.custom_field.title ? '' : o.custom_field.name,
         title: o.custom_field.title,
