@@ -347,7 +347,7 @@ class Plugin {
           custom_field_values: customFieldValues.filter(o => o.value).map(o => ({
             custom_field: o.field.id,
             value: o.value && o.value.value ? o.value.value : o.value,
-            ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
+            // ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
           }))
         } : {})
       },
