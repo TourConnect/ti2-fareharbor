@@ -344,7 +344,7 @@ class Plugin {
         ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
         ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {}),
         ...(customFieldValues && customFieldValues.length ? {
-          custom_field_values: customFieldValues.filter(o => o.value).map(o => ({
+          custom_field_values: customFieldValues.filter(o => !R.isNil(o.value)).map(o => ({
             custom_field: o.field.id,
             value: o.value && o.value.value ? o.value.value : o.value,
             // ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
