@@ -447,7 +447,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
-      affiliateShortName,
+      affiliateShortName = '',
     },
   }) {
     const headers = getHeaders({
@@ -474,7 +474,7 @@ class Plugin {
       affiliateKey,
       appKey = this.appKey,
       endpoint,
-      affiliateShortName,
+      affiliateShortName = '',
     },
   }) {
     const headers = getHeaders({
@@ -533,33 +533,26 @@ class Plugin {
       endpoint,
       shortName,
     },
+    query: {
+      productId,
+      date,
+      dateFormat,
+    }
   }) {
     const headers = getHeaders({
       affiliateKey,
       appKey,
     });
-    // get products
-    const products = R.path(['data', 'items'], await axios({
+    if (!productId) return { fields: [], customFields: [] };
+    let avail = R.pathOr([], ['data', 'availabilities', 0], await axios({
       method: 'get',
-      url: `${endpoint || this.endpoint}/${shortName.trim()}/items/`,
+      url: `${endpoint || this.endpoint}/${shortName.trim()}/items/${productId}/minimal/availabilities/date/${
+        date
+          ? moment(date, dateFormat).format('YYYY-MM-DD') 
+          : moment().add(1, 'M').format('YYYY-MM-DD')
+      }/`,
       headers,
     }));
-    if (!products || !products.length) return { fields: [] };
-    // get minimal availability
-    let avail;
-    let availProductIndex = 0;
-    while (!avail && availProductIndex < products.length) {
-      const firstAvail = R.pathOr([], ['data', 'availabilities', 0], await axios({
-        method: 'get',
-        url: `${endpoint || this.endpoint}/${shortName.trim()}/items/${
-          R.path([availProductIndex, 'pk'], products)
-        }/minimal/availabilities/date/${moment().add(1, 'M').format('YYYY-MM-DD')}/`,
-        headers,
-      }));
-      if (firstAvail && firstAvail.capacity) {
-        avail = firstAvail;
-      } else availProductIndex++;
-    }
     if (!avail) return { fields: [] };
     const detailedAvail = R.path(['data', 'availability'], await axios({
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${avail.pk}/`,
