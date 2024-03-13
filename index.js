@@ -553,7 +553,7 @@ class Plugin {
       }/`,
       headers,
     }));
-    if (!avail) return { fields: [] };
+    if (!(avail && avail.pk)) return { fields: [], customFields: [] };
     const detailedAvail = R.path(['data', 'availability'], await axios({
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${avail.pk}/`,
       method: 'get',
