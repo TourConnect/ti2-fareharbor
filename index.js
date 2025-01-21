@@ -219,7 +219,7 @@ class Plugin {
         //     return foundCus && foundCus.capacity >= u.quantity
         //   });
         // }),
-        avail,
+        avail.filter(o => o.customer_type_rates.length > 0),
         async obj => {
           const lodgings = R.pathOr([], ['data', 'lodgings'], await axios({
             method: 'get',
@@ -327,6 +327,9 @@ class Plugin {
       appKey,
     });
     let data = await jwt.verify(availabilityKey, this.jwtKey);
+    const validCustomFieldValues = customFieldValues.filter(o => !R.isNil(o.value));
+    const bookingCustomFieldValues = validCustomFieldValues.filter(o => !o.field.isPerUnitItem);
+    const unitCustomFieldValues = validCustomFieldValues.filter(o => o.field.isPerUnitItem);
     let booking = R.path(['data', 'booking'], await axios({
       method: 'post',
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${data.availabilityId}/bookings/`,
@@ -339,12 +342,25 @@ class Plugin {
           email: holder.emailAddress,
           phone: holder.phone,
         },
-        customers: data.customers,
+        customers: unitCustomFieldValues.length
+          ? data.customers.map((c, ci) => ({
+            ...c,
+            // Please note that when the isPerUnitItem is true, the frontend
+            // will set the custom field for each unit and modify the "id" to be
+            // the custom_field_id|unit_index
+            custom_field_values: unitCustomFieldValues
+              .filter(o => ci === parseInt(o.field.id.split('|')[1]))
+              .map(o => ({
+                custom_field: o.field.id.split('|')[0],
+                value: o.value && o.value.value ? o.value.value : o.value,
+              })),
+          }))
+          : data.customers,
         ...(pickupPoint && !isNaN(pickupPoint) ? { lodging: parseInt(pickupPoint) } : {}),
         ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
         ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {}),
-        ...(customFieldValues && customFieldValues.length ? {
-          custom_field_values: customFieldValues.filter(o => !R.isNil(o.value)).map(o => ({
+        ...(bookingCustomFieldValues && bookingCustomFieldValues.length ? {
+          custom_field_values: bookingCustomFieldValues.map(o => ({
             custom_field: o.field.id,
             value: o.value && o.value.value ? o.value.value : o.value,
             // ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
@@ -424,6 +440,9 @@ class Plugin {
     },
   }) {
     assert(bookingId, 'bookingId is required');
+    const isUUID = s =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+    if (!isUUID(bookingId)) return { bookings: [] };
     const headers = getHeaders({
       affiliateKey,
       appKey,
@@ -544,7 +563,7 @@ class Plugin {
       appKey,
     });
     if (!productId) return { fields: [], customFields: [] };
-    let avail = R.pathOr([], ['data', 'availabilities', 0], await axios({
+    const availabilities = R.pathOr([], ['data', 'availabilities'], await axios({
       method: 'get',
       url: `${endpoint || this.endpoint}/${shortName.trim()}/items/${productId}/minimal/availabilities/date/${
         date
@@ -553,29 +572,52 @@ class Plugin {
       }/`,
       headers,
     }));
+    let avail = availabilities.find(o => o.customer_type_rates?.length > 0) || availabilities[0];
     if (!(avail && avail.pk)) return { fields: [], customFields: [] };
     const detailedAvail = R.path(['data', 'availability'], await axios({
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${avail.pk}/`,
       method: 'get',
       headers,
     }));
-    if (!R.path(['custom_field_instances', 'length'], detailedAvail)) {
+
+    // Get raw custom fields from both levels
+    const availabilityFields = R.pathOr([], ['custom_field_instances'], detailedAvail)
+      .map(field => ({ ...field, isPerUnitItem: false }));
+
+    const customerTypeFields = R.pipe(
+      R.pathOr([], ['customer_type_rates']),
+      R.chain(rate => R.pathOr([], ['custom_field_instances'], rate)
+        .map(field => ({ 
+          ...field, 
+          isPerUnitItem: true, 
+          // customerPrototypeId: rate.customer_prototype.pk 
+        }))
+      ),
+      R.uniqBy(o => o?.custom_field?.pk)
+    )(detailedAvail);
+
+    const allFields = [...availabilityFields, ...customerTypeFields];
+
+    if (!allFields.length) {
       return { fields: [], customFields: [] };
     }
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/custom-fields.md
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/data-types.md
     return ({
       fields: [],
-      customFields: R.path(['custom_field_instances'], detailedAvail).map(o => ({
-        id: o.custom_field.pk,
-        subtitle: o.custom_field.name === o.custom_field.title ? '' : o.custom_field.name,
-        title: o.custom_field.title,
-        // The custom field's type. Supported types: yes-no, short, long, count, and extended-option.
-        type: o.custom_field.type,
-        options: o.custom_field.extended_options ? o.custom_field.extended_options.map(o => ({
+      customFields: allFields.map(field => ({
+        id: field.custom_field.pk,
+        subtitle: field.custom_field.name === field.custom_field.title ? '' : field.custom_field.name,
+        title: field.custom_field.title,
+        type: field.custom_field.type,
+        options: field.custom_field.extended_options?.map(o => ({
           value: o.pk,
           label: o.name,
-        })) : undefined,
+        })),
+        description: field.custom_field.description,
+        required: field.custom_field.is_required,
+        isPerUnitItem: field.isPerUnitItem,
+        // ...(field.customerPrototypeId && { customerPrototypeId: field.customerPrototypeId }),
       }))
     });
   }
