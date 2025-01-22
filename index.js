@@ -593,7 +593,7 @@ class Plugin {
           // customerPrototypeId: rate.customer_prototype.pk 
         }))
       ),
-      R.uniqBy(o => o?.custom_field?.pk)
+      R.uniqBy(o => R.path(['custom_field', 'pk'], o))
     )(detailedAvail);
 
     const allFields = [...availabilityFields, ...customerTypeFields];
