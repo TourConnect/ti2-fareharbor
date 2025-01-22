@@ -68,6 +68,7 @@ Object {
   "optionId": "default",
   "optionName": "Daily Cruise Tour",
   "orderId": "#344488",
+  "orderReference": null,
   "pickupHotel": null,
   "pickupHotelRoom": null,
   "pickupPoint": null,

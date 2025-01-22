@@ -219,7 +219,7 @@ class Plugin {
         //     return foundCus && foundCus.capacity >= u.quantity
         //   });
         // }),
-        avail.filter(o => o.customer_type_rates.length > 0),
+        avail.filter(o => o.customer_type_rates &&o.customer_type_rates.length > 0),
         async obj => {
           const lodgings = R.pathOr([], ['data', 'lodgings'], await axios({
             method: 'get',
@@ -311,7 +311,7 @@ class Plugin {
       holder,
       rebookingId,
       pickupPoint,
-      customFieldValues,
+      customFieldValues = [],
     },
     typeDefsAndQueries: {
       bookingTypeDefs,
@@ -361,7 +361,7 @@ class Plugin {
         ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {}),
         ...(bookingCustomFieldValues && bookingCustomFieldValues.length ? {
           custom_field_values: bookingCustomFieldValues.map(o => ({
-            custom_field: o.field.id,
+            custom_field: parseInt(o.field.id),
             value: o.value && o.value.value ? o.value.value : o.value,
             // ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
           }))
@@ -572,7 +572,7 @@ class Plugin {
       }/`,
       headers,
     }));
-    let avail = availabilities.find(o => o.customer_type_rates?.length > 0) || availabilities[0];
+    let avail = availabilities.find(o => R.path(['customer_type_rates', 'length'], o) > 0) || availabilities[0];
     if (!(avail && avail.pk)) return { fields: [], customFields: [] };
     const detailedAvail = R.path(['data', 'availability'], await axios({
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${avail.pk}/`,
@@ -606,7 +606,7 @@ class Plugin {
     return ({
       fields: [],
       customFields: allFields.map(field => ({
-        id: field.custom_field.pk,
+        id: `${field.custom_field.pk}`,
         subtitle: field.custom_field.name === field.custom_field.title ? '' : field.custom_field.name,
         title: field.custom_field.title,
         type: field.custom_field.type,
