@@ -610,7 +610,7 @@ class Plugin {
         subtitle: field.custom_field.name === field.custom_field.title ? '' : field.custom_field.name,
         title: field.custom_field.title,
         type: field.custom_field.type,
-        options: field.custom_field.extended_options?.map(o => ({
+        options: R.pathOr([], ['custom_field', 'extended_options'], field).map(o => ({
           value: o.pk,
           label: o.name,
         })),
