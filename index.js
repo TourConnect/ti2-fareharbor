@@ -351,7 +351,7 @@ class Plugin {
             custom_field_values: unitCustomFieldValues
               .filter(o => ci === parseInt(o.field.id.split('|')[1]))
               .map(o => ({
-                custom_field: o.field.id.split('|')[0],
+                custom_field: Number(o.field.id.split('|')[0]),
                 value: o.value && o.value.value ? o.value.value : o.value,
               })),
           }))
