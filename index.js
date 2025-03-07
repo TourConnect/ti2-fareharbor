@@ -588,12 +588,12 @@ class Plugin {
       R.pathOr([], ['customer_type_rates']),
       R.chain(rate => R.pathOr([], ['custom_field_instances'], rate)
         .map(field => ({ 
-          ...field, 
-          isPerUnitItem: true, 
-          // customerPrototypeId: rate.customer_prototype.pk 
+          ...field,
+          isPerUnitItem: true,
+          customerPrototypeId: rate.customer_prototype.pk 
         }))
       ),
-      R.uniqBy(o => R.path(['custom_field', 'pk'], o))
+      R.uniqBy(field => `${R.path(['custom_field', 'pk'], field)} ${field.customerPrototypeId || ''}`)
     )(detailedAvail);
 
     const allFields = [...availabilityFields, ...customerTypeFields];
@@ -617,8 +617,8 @@ class Plugin {
         description: field.custom_field.description,
         required: field.custom_field.is_required,
         isPerUnitItem: field.isPerUnitItem,
-        // ...(field.customerPrototypeId && { customerPrototypeId: field.customerPrototypeId }),
-      }))
+        ...(field.customerPrototypeId && { unitId: field.customerPrototypeId }),
+      })).filter(o => o.title)
     });
   }
 }
