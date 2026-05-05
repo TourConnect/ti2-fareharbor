@@ -311,6 +311,7 @@ class Plugin {
       holder,
       rebookingId,
       pickupPoint,
+      participants = [],
       customFieldValues = [],
     },
     typeDefsAndQueries: {
@@ -327,9 +328,42 @@ class Plugin {
       appKey,
     });
     let data = await jwt.verify(availabilityKey, this.jwtKey);
+    const fieldValue = customFieldValue => (
+      customFieldValue.value && customFieldValue.value.value
+        ? customFieldValue.value.value
+        : customFieldValue.value
+    );
+    const isUnitScopedField = customFieldValue => (
+      Boolean(R.path(['field', 'isPerUnitItem'], customFieldValue))
+      || String(R.pathOr('', ['field', 'id'], customFieldValue)).includes('|')
+    );
+    const fieldId = customFieldValue => Number(String(R.path(['field', 'id'], customFieldValue)).split('|')[0]);
     const validCustomFieldValues = customFieldValues.filter(o => !R.isNil(o.value));
-    const bookingCustomFieldValues = validCustomFieldValues.filter(o => !o.field.isPerUnitItem);
-    const unitCustomFieldValues = validCustomFieldValues.filter(o => o.field.isPerUnitItem);
+    const bookingCustomFieldValues = validCustomFieldValues.filter(o => !isUnitScopedField(o));
+    const legacyUnitCustomFieldValues = validCustomFieldValues
+      .filter(isUnitScopedField)
+      .map(o => ({
+        ...o,
+        participantIndex: parseInt(String(o.field.id).split('|')[1], 10),
+      }))
+      .filter(o => !Number.isNaN(o.participantIndex));
+    const participantCustomFieldValues = R.addIndex(R.chain)((participant, participantIndex) => (
+      R.pathOr([], ['customFieldValues'], participant)
+        .filter(o => !R.isNil(o.value))
+        .map(o => ({
+          ...o,
+          participantIndex,
+        }))
+    ), participants);
+    const participantUnitCustomFieldValues = participantCustomFieldValues.filter(isUnitScopedField);
+    const participantBookingCustomFieldValues = participantCustomFieldValues.filter(
+      o => !isUnitScopedField(o)
+    );
+    const mergedBookingCustomFieldValues = R.uniqBy(
+      o => `${fieldId(o)}|${fieldValue(o)}`,
+      [...bookingCustomFieldValues, ...participantBookingCustomFieldValues]
+    );
+    const customerCustomFieldValues = [...legacyUnitCustomFieldValues, ...participantUnitCustomFieldValues];
     let booking = R.path(['data', 'booking'], await axios({
       method: 'post',
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${data.availabilityId}/bookings/`,
@@ -342,27 +376,24 @@ class Plugin {
           email: holder.emailAddress,
           phone: holder.phone,
         },
-        customers: unitCustomFieldValues.length
+        customers: customerCustomFieldValues.length
           ? data.customers.map((c, ci) => ({
             ...c,
-            // Please note that when the isPerUnitItem is true, the frontend
-            // will set the custom field for each unit and modify the "id" to be
-            // the custom_field_id|unit_index
-            custom_field_values: unitCustomFieldValues
-              .filter(o => ci === parseInt(o.field.id.split('|')[1]))
+            custom_field_values: customerCustomFieldValues
+              .filter(o => ci === o.participantIndex)
               .map(o => ({
-                custom_field: Number(o.field.id.split('|')[0]),
-                value: o.value && o.value.value ? o.value.value : o.value,
+                custom_field: fieldId(o),
+                value: fieldValue(o),
               })),
           }))
           : data.customers,
         ...(pickupPoint && !isNaN(pickupPoint) ? { lodging: parseInt(pickupPoint) } : {}),
         ...(desk && !isNaN(desk) ? { desk: parseInt(desk) } : {}),
         ...(agent && !isNaN(agent)  ? { agent: parseInt(agent) } : {}),
-        ...(bookingCustomFieldValues && bookingCustomFieldValues.length ? {
-          custom_field_values: bookingCustomFieldValues.map(o => ({
-            custom_field: parseInt(o.field.id),
-            value: o.value && o.value.value ? o.value.value : o.value,
+        ...(mergedBookingCustomFieldValues && mergedBookingCustomFieldValues.length ? {
+          custom_field_values: mergedBookingCustomFieldValues.map(o => ({
+            custom_field: fieldId(o),
+            value: fieldValue(o),
             // ...(o.field.type === 'extended-option' ? { 'extended_option': o.value.value } : {})
           }))
         } : {})
@@ -605,20 +636,32 @@ class Plugin {
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/data-types.md
     return ({
       fields: [],
-      customFields: allFields.map(field => ({
-        id: `${field.custom_field.pk}`,
-        subtitle: field.custom_field.name === field.custom_field.title ? '' : field.custom_field.name,
-        title: field.custom_field.title,
-        type: field.custom_field.type,
-        options: R.pathOr([], ['custom_field', 'extended_options'], field).map(o => ({
-          value: o.pk,
-          label: o.name,
-        })),
-        description: field.custom_field.description,
-        required: field.custom_field.is_required,
-        isPerUnitItem: field.isPerUnitItem,
-        ...(field.customerPrototypeId && { unitId: field.customerPrototypeId }),
-      })).filter(o => o.title)
+      customFields: allFields.map(field => {
+        const visiblePerParticipant = Boolean(
+          field.isPerUnitItem || R.pathOr(false, ['custom_field', 'is_always_per_customer'], field)
+        );
+        const visiblePerBooking = true;
+        const requiredPerParticipant = Boolean(visiblePerParticipant && field.custom_field.is_required);
+        const requiredPerBooking = Boolean(!visiblePerParticipant && field.custom_field.is_required);
+        return ({
+          id: `${field.custom_field.pk}`,
+          subtitle: field.custom_field.name === field.custom_field.title ? '' : field.custom_field.name,
+          title: field.custom_field.title,
+          type: field.custom_field.type,
+          options: R.pathOr([], ['custom_field', 'extended_options'], field).map(o => ({
+            value: o.pk,
+            label: o.name,
+          })),
+          description: field.custom_field.description,
+          required: field.custom_field.is_required,
+          requiredPerBooking,
+          requiredPerParticipant,
+          visiblePerBooking,
+          visiblePerParticipant,
+          isPerUnitItem: field.isPerUnitItem,
+          ...(field.customerPrototypeId && { unitId: field.customerPrototypeId }),
+        });
+      }).filter(o => o.title)
     });
   }
 }
