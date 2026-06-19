@@ -338,7 +338,8 @@ class Plugin {
       || String(R.pathOr('', ['field', 'id'], customFieldValue)).includes('|')
     );
     const fieldId = customFieldValue => Number(String(R.path(['field', 'id'], customFieldValue)).split('|')[0]);
-    const validCustomFieldValues = customFieldValues.filter(o => !R.isNil(o.value));
+    const hasNumericFieldId = customFieldValue => Number.isInteger(fieldId(customFieldValue));
+    const validCustomFieldValues = customFieldValues.filter(o => !R.isNil(o.value) && hasNumericFieldId(o));
     const bookingCustomFieldValues = validCustomFieldValues.filter(o => !isUnitScopedField(o));
     const legacyUnitCustomFieldValues = validCustomFieldValues
       .filter(isUnitScopedField)
@@ -349,7 +350,7 @@ class Plugin {
       .filter(o => !Number.isNaN(o.participantIndex));
     const participantCustomFieldValues = R.addIndex(R.chain)((participant, participantIndex) => (
       R.pathOr([], ['customFieldValues'], participant)
-        .filter(o => !R.isNil(o.value))
+        .filter(o => !R.isNil(o.value) && hasNumericFieldId(o))
         .map(o => ({
           ...o,
           participantIndex,
