@@ -162,4 +162,70 @@ describe('createBooking custom fields mapping', () => {
       { custom_field: 98626, value: true },
     ]);
   });
+
+  it('drops non-numeric custom field ids before calling FareHarbor', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [
+        { customer_type_rate: 2648213465 },
+        { customer_type_rate: 2648213465 },
+      ],
+    });
+    const axios = jest.fn().mockResolvedValue({
+      data: { booking: { pk: 1234 } },
+    });
+
+    await app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          name: 'Sachin',
+          surname: 'Shintre',
+          emailAddress: 'sachin@tourconnect.com',
+          phone: '',
+        },
+        customFieldValues: [
+          {
+            field: { id: '98621', isPerUnitItem: false, visiblePerParticipant: false },
+            value: 'VALID BOOKING FIELD',
+          },
+          {
+            field: { id: 'place', isPerUnitItem: false, visiblePerParticipant: false },
+            value: 'Sydney',
+          },
+        ],
+        participants: [
+          {
+            customFieldValues: [
+              {
+                field: { id: '98626', isPerUnitItem: true, visiblePerParticipant: true },
+                value: false,
+              },
+              {
+                field: { id: 'startTime', isPerUnitItem: true, visiblePerParticipant: true },
+                value: '13:30',
+              },
+            ],
+          },
+          { customFieldValues: [] },
+        ],
+      },
+      typeDefsAndQueries: {
+        bookingTypeDefs: '',
+        bookingQuery: '',
+      },
+    });
+
+    expect(axios).toHaveBeenCalledTimes(1);
+    const request = axios.mock.calls[0][0];
+    expect(request.data.custom_field_values).toEqual([
+      { custom_field: 98621, value: 'VALID BOOKING FIELD' },
+    ]);
+    expect(request.data.customers[0].custom_field_values).toEqual([
+      { custom_field: 98626, value: false },
+    ]);
+    expect(request.data.customers[1].custom_field_values).toEqual([]);
+  });
 });
