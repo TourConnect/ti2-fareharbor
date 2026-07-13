@@ -49,7 +49,7 @@ describe('createBooking custom fields mapping', () => {
           name: 'Sachin',
           surname: 'Shintre',
           emailAddress: 'sachin@tourconnect.com',
-          phone: '',
+          phone: '+15551234567',
         },
         customFieldValues: [
           {
@@ -136,7 +136,7 @@ describe('createBooking custom fields mapping', () => {
           name: 'Sachin',
           surname: 'Shintre',
           emailAddress: 'sachin@tourconnect.com',
-          phone: '',
+          phone: '+15551234567',
         },
         customFieldValues: [
           {
@@ -184,7 +184,7 @@ describe('createBooking custom fields mapping', () => {
           name: 'Sachin',
           surname: 'Shintre',
           emailAddress: 'sachin@tourconnect.com',
-          phone: '',
+          phone: '+15551234567',
         },
         customFieldValues: [
           {
@@ -227,5 +227,182 @@ describe('createBooking custom fields mapping', () => {
       { custom_field: 98626, value: false },
     ]);
     expect(request.data.customers[1].custom_field_values).toEqual([]);
+  });
+
+  it('rejects createBooking when holder email or phone is missing', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [{ customer_type_rate: 2648213465 }],
+    });
+    const axios = jest.fn().mockResolvedValue({
+      data: { booking: { pk: 1234 } },
+    });
+
+    await expect(app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          name: 'Sachin',
+          surname: 'Shintre',
+        },
+      },
+      typeDefsAndQueries: {
+        bookingTypeDefs: '',
+        bookingQuery: '',
+      },
+    })).rejects.toThrow(/email address is required/i);
+
+    expect(axios).not.toHaveBeenCalled();
+  });
+
+  it('rejects createBooking when holder phone is empty', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [{ customer_type_rate: 2648213465 }],
+    });
+    const axios = jest.fn().mockResolvedValue({
+      data: { booking: { pk: 1234 } },
+    });
+
+    await expect(app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          name: 'Lead',
+          surname: 'Traveler',
+          emailAddress: 'lead@example.com',
+          phone: '',
+        },
+      },
+      typeDefsAndQueries: {
+        bookingTypeDefs: '',
+        bookingQuery: '',
+      },
+    })).rejects.toThrow(/phone number is required/i);
+
+    expect(axios).not.toHaveBeenCalled();
+  });
+
+  it('accepts firstName/lastName aliases on holder', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [{ customer_type_rate: 2648213465 }],
+    });
+    const axios = jest.fn().mockResolvedValue({
+      data: { booking: { pk: 1234 } },
+    });
+
+    await app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          firstName: 'Sachin',
+          lastName: 'Shintre',
+          emailAddress: 'sachin@tourconnect.com',
+          phoneNumber: '+15551234567',
+        },
+      },
+      typeDefsAndQueries: {
+        bookingTypeDefs: '',
+        bookingQuery: '',
+      },
+    });
+
+    expect(axios).toHaveBeenCalledTimes(1);
+    expect(axios.mock.calls[0][0].data.contact).toEqual({
+      name: 'Sachin Shintre',
+      email: 'sachin@tourconnect.com',
+      phone: '+15551234567',
+    });
+  });
+
+  it('accepts phoneNumber as an alias for holder phone', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [{ customer_type_rate: 2648213465 }],
+    });
+    const axios = jest.fn().mockResolvedValue({
+      data: { booking: { pk: 1234 } },
+    });
+
+    await app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          name: 'Sachin',
+          surname: 'Shintre',
+          emailAddress: 'sachin@tourconnect.com',
+          phoneNumber: '+15551234567',
+        },
+      },
+      typeDefsAndQueries: {
+        bookingTypeDefs: '',
+        bookingQuery: '',
+      },
+    });
+
+    expect(axios).toHaveBeenCalledTimes(1);
+    const request = axios.mock.calls[0][0];
+    expect(request.data.contact).toEqual({
+      name: 'Sachin Shintre',
+      email: 'sachin@tourconnect.com',
+      phone: '+15551234567',
+    });
+  });
+
+  it('accepts holder with first name only (surname optional)', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [{ customer_type_rate: 2648213465 }],
+    });
+    const axios = jest.fn().mockResolvedValue({ data: { booking: { pk: 1 } } });
+
+    await app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          name: 'Sachin',
+          emailAddress: 'sachin@tourconnect.com',
+          phone: '+15551234567',
+        },
+      },
+      typeDefsAndQueries: { bookingTypeDefs: '', bookingQuery: '' },
+    });
+
+    expect(axios.mock.calls[0][0].data.contact.name).toBe('Sachin');
+  });
+
+  it('rejects createBooking when first name is missing', async () => {
+    jwt.verify.mockResolvedValue({
+      availabilityId: 79961022,
+      customers: [{ customer_type_rate: 2648213465 }],
+    });
+    const axios = jest.fn();
+
+    await expect(app.createBooking({
+      axios,
+      token,
+      payload: {
+        availabilityKey: 'fake',
+        holder: {
+          surname: 'Shintre',
+          emailAddress: 'sachin@tourconnect.com',
+          phone: '+15551234567',
+        },
+      },
+      typeDefsAndQueries: { bookingTypeDefs: '', bookingQuery: '' },
+    })).rejects.toThrow(/first name is required/i);
+
+    expect(axios).not.toHaveBeenCalled();
   });
 });

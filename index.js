@@ -14,6 +14,70 @@ const CONCURRENCY = 3; // is this ok ?
 
 const isNilOrEmpty = R.either(R.isNil, R.isEmpty);
 
+// Include firstName/lastName so multi-booking still sends holder name fields when
+// travelerFieldsFromTi2 is non-empty. firstName/email/phone are asserted in
+// createBooking and required here so the UI validates before send; lastName is optional.
+// https://fareharbor.com/api/external/v1/api-reference-affiliates#tag/Bookings-Endpoints/operation/post-bookings
+const TRAVELER_FIELDS = [
+  {
+    id: 'firstName',
+    title: 'First Name',
+    subtitle: 'Enter traveler first name',
+    type: 'short',
+    required: true,
+    visiblePerBooking: true,
+    requiredPerBooking: true,
+  },
+  {
+    id: 'lastName',
+    title: 'Last Name',
+    subtitle: 'Enter traveler last name',
+    type: 'short',
+    required: false,
+    visiblePerBooking: true,
+    requiredPerBooking: false,
+  },
+  {
+    id: 'emailAddress',
+    title: 'Email',
+    subtitle: 'Enter traveler email address',
+    type: 'short',
+    required: true,
+    visiblePerBooking: true,
+    requiredPerBooking: true,
+  },
+  {
+    id: 'phoneNumber',
+    title: 'Phone',
+    subtitle: 'Enter traveler phone number',
+    type: 'short',
+    required: true,
+    visiblePerBooking: true,
+    requiredPerBooking: true,
+  },
+];
+
+// Resolve holder fields using both TI2 traveler field ids and legacy holder keys.
+const holderFirstName = holder => (
+  R.path(['name'], holder) || R.path(['firstName'], holder) || ''
+);
+const holderLastName = holder => (
+  R.path(['surname'], holder) || R.path(['lastName'], holder) || ''
+);
+const holderEmail = holder => (
+  R.path(['emailAddress'], holder) || R.path(['email'], holder) || ''
+);
+const holderPhone = holder => (
+  R.path(['phone'], holder) || R.path(['phoneNumber'], holder) || ''
+);
+
+const buildContact = holder => ({
+  name: `${holderFirstName(holder)} ${holderLastName(holder)}`.trim(),
+  // Required by createBooking asserts and FareHarbor contact schema.
+  email: holderEmail(holder),
+  phone: holderPhone(holder),
+});
+
 const getHeaders = ({
   affiliateKey,
   appKey,
@@ -320,9 +384,10 @@ class Plugin {
     },
   }) {
     assert(availabilityKey, 'an availability code is required !');
-    assert(R.path(['name'], holder), 'a holder\' first name is required');
-    assert(R.path(['surname'], holder), 'a holder\' surname is required');
-    // assert(R.path(['emailAddress'], holder), 'a holder\' email address is required');
+    // Matches TRAVELER_FIELDS: firstName/email/phone required; lastName optional.
+    assert(!isNilOrEmpty(holderFirstName(holder)), 'a holder\' first name is required');
+    assert(!isNilOrEmpty(holderEmail(holder)), 'a holder\' email address is required');
+    assert(!isNilOrEmpty(holderPhone(holder)), 'a holder\' phone number is required');
     const headers = getHeaders({
       affiliateKey,
       appKey,
@@ -339,7 +404,9 @@ class Plugin {
     );
     const fieldId = customFieldValue => Number(String(R.path(['field', 'id'], customFieldValue)).split('|')[0]);
     const hasNumericFieldId = customFieldValue => Number.isInteger(fieldId(customFieldValue));
-    const validCustomFieldValues = customFieldValues.filter(o => !R.isNil(o.value) && hasNumericFieldId(o));
+    const hasSendableValue = customFieldValue => !isNilOrEmpty(fieldValue(customFieldValue));
+    const validCustomFieldValues = customFieldValues
+      .filter(o => hasSendableValue(o) && hasNumericFieldId(o));
     const bookingCustomFieldValues = validCustomFieldValues.filter(o => !isUnitScopedField(o));
     const legacyUnitCustomFieldValues = validCustomFieldValues
       .filter(isUnitScopedField)
@@ -350,7 +417,7 @@ class Plugin {
       .filter(o => !Number.isNaN(o.participantIndex));
     const participantCustomFieldValues = R.addIndex(R.chain)((participant, participantIndex) => (
       R.pathOr([], ['customFieldValues'], participant)
-        .filter(o => !R.isNil(o.value) && hasNumericFieldId(o))
+        .filter(o => hasSendableValue(o) && hasNumericFieldId(o))
         .map(o => ({
           ...o,
           participantIndex,
@@ -372,11 +439,7 @@ class Plugin {
         rebooking: rebookingId,
         note: notes,
         voucher_number: reference,
-        contact: {
-          name: `${holder.name || ''} ${holder.surname || ''}`.trim(),
-          email: holder.emailAddress,
-          phone: holder.phone,
-        },
+        contact: buildContact(holder),
         customers: customerCustomFieldValues.length
           ? data.customers.map((c, ci) => ({
             ...c,
@@ -605,7 +668,7 @@ class Plugin {
       headers,
     }));
     let avail = availabilities.find(o => R.path(['customer_type_rates', 'length'], o) > 0) || availabilities[0];
-    if (!(avail && avail.pk)) return { fields: [], customFields: [] };
+    if (!(avail && avail.pk)) return { fields: TRAVELER_FIELDS, customFields: [] };
     const detailedAvail = R.path(['data', 'availability'], await axios({
       url: `${endpoint || this.endpoint}/${shortName.trim()}/availabilities/${avail.pk}/`,
       method: 'get',
@@ -631,12 +694,12 @@ class Plugin {
     const allFields = [...availabilityFields, ...customerTypeFields];
 
     if (!allFields.length) {
-      return { fields: [], customFields: [] };
+      return { fields: TRAVELER_FIELDS, customFields: [] };
     }
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/custom-fields.md
     // https://github.com/FareHarbor/fareharbor-docs/blob/master/external-api/data-types.md
     return ({
-      fields: [],
+      fields: TRAVELER_FIELDS,
       customFields: allFields.map(field => {
         const visiblePerParticipant = Boolean(
           field.isPerUnitItem || R.pathOr(false, ['custom_field', 'is_always_per_customer'], field)

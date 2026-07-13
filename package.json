@@ -1,6 +1,6 @@
 {
   "name": "ti2-fareharbor",
-  "version": "1.0.35",
+  "version": "1.0.36",
   "description": "Fareharbor's TI2 Plugin",
   "main": "index.js",
   "scripts": {
