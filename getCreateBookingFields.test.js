@@ -87,7 +87,28 @@ describe('getCreateBookingFields', () => {
       },
     });
 
-    expect(result.fields).toEqual([]);
+    expect(result.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'firstName',
+        required: true,
+        requiredPerBooking: true,
+      }),
+      expect.objectContaining({
+        id: 'lastName',
+        required: false,
+        requiredPerBooking: false,
+      }),
+      expect.objectContaining({
+        id: 'emailAddress',
+        required: true,
+        requiredPerBooking: true,
+      }),
+      expect.objectContaining({
+        id: 'phoneNumber',
+        required: true,
+        requiredPerBooking: true,
+      }),
+    ]));
     expect(result.customFields).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: '101',
@@ -128,5 +149,67 @@ describe('getCreateBookingFields', () => {
     });
     expect(result).toEqual({ fields: [], customFields: [] });
     expect(axios).not.toHaveBeenCalled();
+  });
+
+  it('returns traveler fields when availability has no custom fields', async () => {
+    const axios = jest.fn()
+      .mockResolvedValueOnce({
+        data: {
+          availabilities: [{
+            pk: 9001,
+            customer_type_rates: [{ pk: 1 }],
+          }],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          availability: {
+            custom_field_instances: [],
+            customer_type_rates: [],
+          },
+        },
+      });
+
+    const result = await app.getCreateBookingFields({
+      axios,
+      token,
+      query: {
+        productId: 32439,
+        date: '15/08/2026',
+        dateFormat: 'DD/MM/YYYY',
+      },
+    });
+
+    expect(result.customFields).toEqual([]);
+    expect(result.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'firstName' }),
+      expect.objectContaining({ id: 'lastName' }),
+      expect.objectContaining({ id: 'emailAddress' }),
+      expect.objectContaining({ id: 'phoneNumber' }),
+    ]));
+  });
+
+  it('returns traveler fields when no availability is found', async () => {
+    const axios = jest.fn().mockResolvedValueOnce({
+      data: { availabilities: [] },
+    });
+
+    const result = await app.getCreateBookingFields({
+      axios,
+      token,
+      query: {
+        productId: 32439,
+        date: '15/08/2026',
+        dateFormat: 'DD/MM/YYYY',
+      },
+    });
+
+    expect(result.customFields).toEqual([]);
+    expect(result.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'firstName', required: true }),
+      expect.objectContaining({ id: 'emailAddress', required: true }),
+      expect.objectContaining({ id: 'phoneNumber', required: true }),
+    ]));
+    expect(axios).toHaveBeenCalledTimes(1);
   });
 });
