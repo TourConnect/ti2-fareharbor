@@ -171,18 +171,28 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    let results = R.pathOr([], ['data', 'items'], await axios({
+    let results = R.path(['data', 'items'], await axios({
       method: 'get',
       url,
       headers,
     }));
+    assert(Array.isArray(results), 'FareHarbor product catalog did not return an items array');
+    const productIds = new Set();
+    results = results.filter((product, index) => {
+      assert(product && (
+        (typeof product.pk === 'string' && product.pk.trim())
+        || (typeof product.pk === 'number' && Number.isFinite(product.pk))
+      ), `FareHarbor product catalog row ${index} did not return a valid pk`);
+      const id = String(product.pk);
+      if (productIds.has(id)) return false;
+      productIds.add(id);
+      return true;
+    });
     const company = R.pathOr({}, ['data', 'company'], await axios({
       method: 'get',
       url: `${endpoint || this.endpoint}/${shortName.trim()}/`,
       headers,
     }));
-    if (!Array.isArray(results)) results = [results];
-    // console.log({ results })
     let products = await Promise.map(results, async product => {
       return translateProduct({
         rootValue: { ...product, company },
@@ -190,20 +200,19 @@ class Plugin {
         query: productQuery,
       });
     });
-    // dynamic extra filtering
+    // Filter only defined own fields on each product; ignore other payload metadata.
     if (!isNilOrEmpty(payload)) {
-      const extraFilters = R.omit([], payload);
-      if (Object.keys(extraFilters).length > 0) {
-        products = products.filter(
-          product => Object.entries(extraFilters).every(
-            ([key, value]) => {
-              if (typeof value === 'string') return wildcardMatch(value, product[key]);
-              if (key === 'productId') return `${product.productId}` === `${value}`;
-              return true;
-            },
-          ),
-        );
-      }
+      products = products.filter(
+        product => Object.entries(payload).every(
+          ([key, value]) => {
+            if (!Object.prototype.hasOwnProperty.call(product, key)
+              || product[key] === undefined) return true;
+            if (typeof value === 'string') return wildcardMatch(value, product[key]);
+            if (key === 'productId') return `${product.productId}` === `${value}`;
+            return true;
+          },
+        ),
+      );
     }
     return ({ products, results });
   }
@@ -323,6 +332,7 @@ class Plugin {
       startDate,
       endDate,
       dateFormat,
+      includeUnitRates = false,
     },
     typeDefsAndQueries: {
       availTypeDefs,
@@ -341,7 +351,7 @@ class Plugin {
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/`;
+    const url = `${endpoint || this.endpoint}/${shortName.trim()}/items/${productIds[0]}/minimal/availabilities/date-range/${localDateStart}/${localDateEnd}/${includeUnitRates ? '?detailed=yes' : ''}`;
     const retVal = await axios({
       method: 'get',
       url,

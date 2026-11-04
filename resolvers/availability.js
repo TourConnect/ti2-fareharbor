@@ -35,7 +35,7 @@ const resolvers = {
     // get the starting price
     pricing: root => {
       // sort ascending
-      const sorted = R.sort(R.ascend(R.path(['customer_prototype', 'total_including_tax'])), root.customer_type_rates);
+      const sorted = R.sort(R.ascend(R.path(['customer_prototype', 'total_including_tax'])), root.customer_type_rates || []);
       return sorted[0];
     },
     unitPricing: root => R.path(['customer_type_rates'], root),
