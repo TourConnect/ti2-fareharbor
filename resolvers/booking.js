@@ -34,7 +34,8 @@ const resolvers = {
     start: R.path(['availability', 'start_at']),
     end: R.path(['availability', 'end_at']),
     allDay: () => false,
-    bookingDate: R.path(['utcCreatedAt']),
+    // FareHarbor returns created_at; utcCreatedAt is kept as a legacy fallback.
+    bookingDate: root => R.path(['created_at'], root) || R.path(['utcCreatedAt'], root),
     holder: root => ({
       name: R.path(['contact', 'name'], root).split(' ')[0],
       surname: R.last(R.path(['contact', 'name'], root).split(' ')),

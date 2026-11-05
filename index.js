@@ -532,37 +532,169 @@ class Plugin {
     },
     payload: {
       bookingId,
-      // we can only access booking by id
-      // resellerReference,
-      // supplierBookingId,
-      // travelDateStart,
-      // travelDateEnd,
-      // dateFormat,
+      supplierBookingId,
+      resellerReference,
+      purchaseDateStart,
+      purchaseDateEnd,
+      travelDateStart,
+      travelDateEnd,
+      dateFormat,
     },
     typeDefsAndQueries: {
       bookingTypeDefs,
       bookingQuery,
     },
   }) {
-    assert(bookingId, 'bookingId is required');
+    // FareHarbor has no lookup by display_id/voucher_number. Reject these
+    // selectors explicitly rather than silently returning every booking in
+    // a supplied date range.
+    assert(
+      isNilOrEmpty(supplierBookingId) && isNilOrEmpty(resellerReference),
+      'supplierBookingId/resellerReference search is not supported',
+    );
+    assert(
+      !isNilOrEmpty(bookingId)
+        || !isNilOrEmpty(purchaseDateStart) || !isNilOrEmpty(purchaseDateEnd)
+        || !isNilOrEmpty(travelDateStart) || !isNilOrEmpty(travelDateEnd),
+      'at least one of bookingId, purchaseDateStart or travelDateStart is required',
+    );
     const isUUID = s =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-    if (!isUUID(bookingId)) return { bookings: [] };
     const headers = getHeaders({
       affiliateKey,
       appKey,
     });
-    const url = `${endpoint || this.endpoint}/${shortName.trim()}/bookings/${bookingId}/`;
-    const booking = R.path(['data', 'booking'], await axios({
-      method: 'get',
-      url,
-      headers,
-    }));
-    return ({ bookings: [await translateBooking({
-      rootValue: booking, 
+    const baseUrl = `${endpoint || this.endpoint}/${shortName.trim()}`;
+    const translateRawBooking = rawBooking => translateBooking({
+      rootValue: rawBooking,
       typeDefs: bookingTypeDefs,
       query: bookingQuery,
-    })] });
+    });
+    // FareHarbor rejects unknown UUIDs with HTTP 404 (code
+    // booking-uuid-invalid); treat only that as "no match" like the
+    // non-UUID path below, and let other upstream failures surface.
+    const isNotFoundError = err => R.path(['response', 'status'], err) === 404
+      || R.path(['response', 'data', 'code'], err) === 'booking-uuid-invalid';
+    const getRawBooking = async uuid => {
+      let rawBooking;
+      try {
+        rawBooking = R.path(['data', 'booking'], await axios({
+          method: 'get',
+          url: `${baseUrl}/bookings/${uuid}/`,
+          headers,
+        }));
+      } catch (err) {
+        if (isNotFoundError(err)) return null;
+        throw err;
+      }
+      assert(
+        rawBooking && typeof rawBooking === 'object',
+        `FareHarbor booking ${uuid} response did not return a booking object`,
+      );
+      return rawBooking;
+    };
+    const getDataArray = async (url, key, label) => {
+      const data = R.path(['data'], await axios({
+        method: 'get',
+        url,
+        headers,
+      }));
+      assert(
+        data && Array.isArray(data[key]),
+        `FareHarbor ${label} response did not return a ${key} array`,
+      );
+      return data[key];
+    };
+    const bookingUuids = (rawBookings, label) => rawBookings.map(raw => {
+      assert(
+        raw && typeof raw.uuid === 'string' && raw.uuid.trim(),
+        `FareHarbor ${label} response returned a booking without a uuid`,
+      );
+      return raw.uuid;
+    });
+    if (!isNilOrEmpty(bookingId)) {
+      if (!isUUID(bookingId)) return { bookings: [] };
+      const booking = await getRawBooking(bookingId);
+      return { bookings: booking ? [await translateRawBooking(booking)] : [] };
+    }
+    const parseDate = value => (dateFormat ? moment(value, dateFormat, true) : moment(value));
+    const datesInRange = (startValue, endValue) => {
+      const start = parseDate(startValue || endValue);
+      const end = parseDate(endValue || startValue);
+      assert(start.isValid() && end.isValid(), 'invalid search date');
+      assert(!end.isBefore(start, 'day'), 'search end date is before start date');
+      const dates = [];
+      for (const day = start.clone(); !day.isAfter(end, 'day'); day.add(1, 'day')) {
+        dates.push(day.format('YYYY-MM-DD'));
+      }
+      return dates;
+    };
+    // Bookings created on each date in the range (FareHarbor only offers a
+    // single-date bookings-by-create-date endpoint, so iterate the days).
+    const uuidsByPurchaseDates = async dates => R.chain(
+      rawBookings => bookingUuids(rawBookings, 'bookings-by-create-date'),
+      await Promise.map(dates, date => getDataArray(
+        `${baseUrl}/minimal/bookings-by-create-date/${date}/`,
+        'bookings',
+        'bookings-by-create-date',
+      ), { concurrency: CONCURRENCY }),
+    );
+    // Bookings for every availability of every item in the travel range.
+    const uuidsByTravelDates = async dates => {
+      const items = await getDataArray(`${baseUrl}/items/`, 'items', 'items');
+      const availabilitiesByItem = await Promise.map(items, async item => {
+        assert(
+          item && ((typeof item.pk === 'string' && item.pk.trim())
+            || (typeof item.pk === 'number' && Number.isFinite(item.pk))),
+          'FareHarbor items response returned an item without a pk',
+        );
+        return getDataArray(
+          `${baseUrl}/items/${item.pk}/minimal/availabilities/date-range/${dates[0]}/${dates[dates.length - 1]}/`,
+          'availabilities',
+          'availabilities',
+        );
+      }, { concurrency: CONCURRENCY });
+      const availabilities = R.flatten(availabilitiesByItem);
+      availabilities.forEach(avail => assert(
+        avail && ((typeof avail.pk === 'string' && String(avail.pk).trim())
+          || (typeof avail.pk === 'number' && Number.isFinite(avail.pk))),
+        'FareHarbor availabilities response returned an availability without a pk',
+      ));
+      return R.chain(
+        rawBookings => bookingUuids(rawBookings, 'availability bookings'),
+        await Promise.map(availabilities, avail => getDataArray(
+          `${baseUrl}/availabilities/${avail.pk}/bookings/`,
+          'bookings',
+          'availability bookings',
+        ), { concurrency: CONCURRENCY }),
+      );
+    };
+    let candidateUuids = null;
+    if (!isNilOrEmpty(purchaseDateStart) || !isNilOrEmpty(purchaseDateEnd)) {
+      candidateUuids = await uuidsByPurchaseDates(
+        datesInRange(purchaseDateStart, purchaseDateEnd),
+      );
+    }
+    if (!isNilOrEmpty(travelDateStart) || !isNilOrEmpty(travelDateEnd)) {
+      const travelUuids = await uuidsByTravelDates(
+        datesInRange(travelDateStart, travelDateEnd),
+      );
+      candidateUuids = candidateUuids === null
+        ? travelUuids
+        : R.intersection(candidateUuids, travelUuids);
+    }
+    const rawBookings = await Promise.map(
+      R.uniq(candidateUuids || []),
+      getRawBooking,
+      { concurrency: CONCURRENCY },
+    );
+    return {
+      bookings: await Promise.map(
+        rawBookings.filter(Boolean),
+        translateRawBooking,
+        { concurrency: CONCURRENCY },
+      ),
+    };
   }
 
   async getAffiliateDesks({
